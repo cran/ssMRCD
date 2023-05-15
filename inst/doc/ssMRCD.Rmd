@@ -1,0 +1,222 @@
+---
+title: "Local Outlier Detection with ssMRCD"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to ssMRCD and local outlier detection}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE, 
+  warning = FALSE, 
+  fig.dim = c(7, 4.5),
+  comment = "#>"
+)
+```
+
+We use this vignette to reproduce the real world example for local outlier detection analysed and described in Puchhammer and Filzmoser (2023). All functions are included in the package `ssMRCD`.
+
+```{r}
+library(ssMRCD)
+library(ggplot2)
+```
+
+
+## Data Preparation
+The original data from GeoSphere Austria (2022) is pre-cleaned and saved in the data frame object `weatherAUt2021`. Additional information can be found on the helping page.
+```{r, eval = FALSE}
+? weatherAUT2021
+```
+
+```{r setup}
+data("weatherAUT2021")
+head(weatherAUT2021)
+```
+
+To apply the local outlier detection function `local_outliers_ssMRCD` we need to specify a structure to calculate the ssMRCD estimator, meaning we need a **neighborhood assignment** and a weight matrix specifying the relative influence of the neighborhoods on each.
+
+Since a prominent part of Austria is Alpine landscape small sized neighborhoods might be appropriate. Thus, we construct a grid of the longitude and latitude values and classify the observations. We summarize neighborhoods for a very small number of observations.
+
+```{r}
+cut_lon = c(9:16, 18)
+cut_lat = c(46, 47, 47.5, 48, 49)
+N = ssMRCD::N_structure_gridbased(weatherAUT2021$lon, weatherAUT2021$lat, cut_lon, cut_lat)
+table(N)
+N[N == 2] = 1
+N[N == 3] = 4
+N[N == 5] = 4
+N[N == 6] = 7
+N[N == 11] = 15
+N = as.numeric(as.factor(N))
+```
+
+The final neighborhood structure can be seen in the following plot, where the neighborhoods are differently colorized.
+
+```{r}
+g1 = ggplot() + 
+  geom_text(data = weatherAUT2021, aes(x = lon, y = lat, col = as.factor(N), label = N)) + 
+  geom_hline(aes(yintercept = cut_lat), lty = "dashed", col = "gray") +
+  geom_vline(aes(xintercept = cut_lon), lty = "dashed", col = "gray") +
+  labs(x = "Longitude", y = "Latitude", title = "Austrian Weather Stations: Neighborhood Structure") +
+  coord_fixed(1.4) + 
+  theme_classic() +
+  theme(legend.position = "none")
+g1
+```
+
+A natural choice for the **weight matrix** when using a grid-based neighborhood structure is the geographical inverse-distance weighting matrix. It is the default value for the `local_outliers_ssMRCD` function but can explicitly be calculated using the function `geo_weights`. This function returns also the center of each neighborhood. E.g. for neighborhood 4 we have the following weights, corresponding to the transparancy of the arrows.
+
+```{r}
+GW = geo_weights(coordinates = weatherAUT2021[, c("lon", "lat")], 
+                 N_assignments = N)
+GW$W[4, ]
+
+g1 + 
+  labs(title = "Austrian Weather Stations: Weighting Matrix W") +
+  geom_segment(aes(x = GW$centersN[4, 1], 
+                   y = GW$centersN[4, 2], 
+                   xend = GW$centersN[-4, 1]-0.1, 
+                   yend = GW$centersN[-4, 2]-0.05,
+                   alpha = GW$W[4, -4]), 
+               arrow = arrow(length = unit(0.25, "cm")),
+               linewidth = 2,
+               col = "blue")+
+  geom_text(aes(x = GW$centersN[, 1], y = GW$centersN[, 2], label = 1:length(GW$centersN[, 2])))
+```
+
+
+## Parameter Tuning
+
+Regarding the parameter settings we have many possibilities. When it comes to the **number of neighbors** we want to compare each observations with there are different possibilities. Either by specifying a value for `k` like `k = 10` which gives the number of observations to compare with or the value for `dist` (e.g. `dist = 1.5`) as the radius of a circle around the observation where all observations inside are compared to the initial observation. A default value for `k` that is used among various local outlier detection methods is 10. However, depending on the spatial structure of the data it makes sense to use other values as well. 
+
+For the **spatial smoothing  parameter `lambda`** the restriction is it has to be in the interval [0, 1). One can set the values according to some argumentation based on the spatial distribution but also on underlying structures. A value of `0.5` is the default value. 
+
+A more sophisticated approach is to introduce outliers to the data set and examine how well the parameter setting is able to find those. The function `parameter_tuning` can be used to analyse different combinations of `k` (or `dist`) and `lambda` (see also help page). 
+```{r, eval = FALSE}
+? parameter_tuning
+```
+
+Observations are switched and thus, this should introduce outliers that we know of. Nevertheless you should keep in mind that the observations are switched entirely randomly. If unlucky we might switch similar observations and thus, the measured performance of the detection method might suffer. However, since we want to compare the different parameter settings on the same contaminated data sets this should not affect the fine tuning itself. 
+
+Moreover, we implicitly assume that the original data set has no outliers. This is in general not the case. Thus, the false-negative rate (FNR) is not the true FNR regarding all outliers. Nevertheless, the parameter tuning is a way to see the effects of the parameter setting on the FNR and the false-positive rate (FPR) which is represented by the total number of found outliers. 
+
+```{r, eval = TRUE, message = FALSE}
+set.seed(123)
+parameter_tuning(data = weatherAUT2021[, 1:6], 
+                 coords = weatherAUT2021[, c("lon", "lat")], 
+                 N_assignments = N, 
+                 repetitions = 3, 
+                 k = c(5, 10, 15), 
+                 lambda = c(0, 0.25, 0.5, 0.75))$plot
+```
+
+It is apparent that some parameter settings are non-optimal compared to others. In general the final choice of the best parameter setting based on the output above depends on the overall goal. We choose `lambda = 0.5` and `k = 10`. Although `k = 10` is not the optimal choice here, the difference in performance is quite small and thus, we prefer to use the default value. 
+
+## Outlier Detection and Covariance Estimation
+If we are only interested in the covariance estimation we can use the function `ssMRCD`. A more convenient way if we are interested in local outlier detection is to use the function `local_outliers_ssMRCD`, which already embeds the covariance estimation. 
+
+```{r, eval = FALSE}
+? local_outliers_ssMRCD
+```
+
+```{r, message = FALSE}
+res = local_outliers_ssMRCD(data = weatherAUT2021[, 1:6],
+                            coords = weatherAUT2021[, c("lon", "lat")],
+                            N_assignments = N,
+                            lambda = 0.5,
+                            k = 10)
+summary(res)
+```
+
+The found outliers can be accessed by the list element `outliers`. 
+```{r, message = FALSE}
+cat(weatherAUT2021$name[res$outliers], sep = ",\n")
+```
+
+### Diagnostics: Covariance Estimation
+
+For the covariance estimation there are two diagnostic plots implemented for the S3-object `"ssMRCD"`, which can be specified by `type`. 
+For type `"convergence"` the convergence property for this specific data set is shown. For `"ellipses"`the estimated covariance matrices are shown in the first two eigenvectors fo the overall data set. The `colour_scheme` parameter yields even more insight into the covariances (see also `?plot.ssMRCD` for more details).
+```{r}
+covariance_res = res$ssMRCD
+plot(covariance_res, 
+     centersN = res$centersN, 
+     manual_rescale = 0.5, 
+     type = c("convergence", "ellipses"), 
+     colour_scheme = "regularity", 
+     legend = TRUE,
+     xlim = c(9, 19))
+```
+
+For completeness the global biplot based on the global covariance matrix is also plotted:
+```{r}
+biplot(stats:: princomp(weatherAUT2021[, 1:6],
+                        cor  = TRUE, 
+                        covmat = robustbase::covMcd(weatherAUT2021[, 1:6])), 
+       col = c("grey", "black"))
+```
+
+### Diagnostics: Local Outlier Detection
+
+For the local outlier detection method there are several plots regarding diagnostics available (see `?plot.locOuts`). The histogram shows all next distances and the cut-off value. The spatial plot shows the outliers on the map, the 3D-plot as well, but with an additional axis for the next-distance/next-distance divided by cut-off value. The line plot shows the scaled values and the specified area in the map. Orange-coloured lines are other outliers on the map, the darkred colored line is the selected observation (`focus`). 
+
+```{r, eval = FALSE}
+? plot.locOuts
+```
+
+
+```{r, fig.dim = c(5,3.5)}
+plot(res, type = "hist", pos = 4)
+```
+
+
+```{r}
+plot(res, type = "spatial", colour = "outScore", xlim = c(9.5, 19))
+```
+
+
+```{r, fig.dim = c(7,3)}
+# SCHOECKL
+plot(res, type = "lines", focus = res$outliers[3])
+```
+
+
+```{r, fig.dim = c(7,4)}
+plot(res, type = "3D", colour = "outScore", theta = 0, phi = 10)
+```
+
+If you want a fancy GIF you can also use the following code making use of the package animation. You should have `ImageMagick` installed.
+```{r, eval = FALSE, include = T}
+library(animation)
+
+# fineness of movement
+n = 90
+param = rbind(cbind(rep(0, 2*n + n/2), c(seq(90, 0, length.out = n), seq(0, 90, length.out = n), seq(90, 30, length.out = n/2))),
+              cbind(c(seq(0, 90, length.out = n), seq(90, 0, length.out = n)), rep(30, 2*n)),
+              cbind(rep(0, n/2), seq(30, 90, length.out = n/2)))
+
+# use function saveGIF
+saveGIF(interval = 0.2, 
+        movie.name = "local_outliers_3D.gif",
+        expr = {
+          for (i in 1:dim(param)[1]) {
+            plot(outs, type = "3D", colour = "outScore", theta = param[i, 1], phi = param[i, 2])
+          }}
+        )
+```
+
+
+
+## References
+
+GeoSphere Austria (2022): <https://data.hub.zamg.ac.at>.
+
+Puchhammer P. and Filzmoser P. (2023): Spatially smoothed robust covariance estimation for local outlier detection. <https://doi.org/10.48550/arXiv.2305.05371>
+
+
+
+
+
+
