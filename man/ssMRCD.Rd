@@ -6,6 +6,7 @@
 \usage{
 ssMRCD(
   x,
+  groups = NULL,
   weights,
   lambda,
   TM = NULL,
@@ -16,7 +17,10 @@ ssMRCD(
 )
 }
 \arguments{
-\item{x}{a list of matrices containing the observations per neighborhood sorted which can be obtained by the function \code{\link[ssMRCD]{restructure_as_list}}.}
+\item{x}{a list of matrices containing the observations per neighborhood sorted which can be obtained by the function \code{\link[ssMRCD]{restructure_as_list}}, or matrix or data frame containing data.
+If matrix or data.frame, group vector has to be given.}
+
+\item{groups}{vector of neighborhood assignments}
 
 \item{weights}{weighting matrix, symmetrical, rows sum up to one and diagonals need to be zero (see also \code{\link[ssMRCD]{geo_weights}} or \code{\link[ssMRCD]{rescale_weights}} .}
 

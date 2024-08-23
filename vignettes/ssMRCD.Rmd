@@ -42,7 +42,7 @@ Since a prominent part of Austria is Alpine landscape small sized neighborhoods 
 ```{r}
 cut_lon = c(9:16, 18)
 cut_lat = c(46, 47, 47.5, 48, 49)
-N = ssMRCD::N_structure_gridbased(weatherAUT2021$lon, weatherAUT2021$lat, cut_lon, cut_lat)
+N = ssMRCD::groups_gridbased(weatherAUT2021$lon, weatherAUT2021$lat, cut_lon, cut_lat)
 table(N)
 N[N == 2] = 1
 N[N == 3] = 4
@@ -70,7 +70,7 @@ A natural choice for the **weight matrix** when using a grid-based neighborhood 
 
 ```{r}
 GW = geo_weights(coordinates = weatherAUT2021[, c("lon", "lat")], 
-                 N_assignments = N)
+                 groups = N)
 GW$W[4, ]
 
 g1 + 
@@ -106,7 +106,7 @@ Moreover, we implicitly assume that the original data set has no outliers. This 
 set.seed(123)
 parameter_tuning(data = weatherAUT2021[, 1:6], 
                  coords = weatherAUT2021[, c("lon", "lat")], 
-                 N_assignments = N, 
+                 groups = N, 
                  repetitions = 3, 
                  k = c(5, 10, 15), 
                  lambda = c(0, 0.25, 0.5, 0.75))$plot
@@ -124,7 +124,7 @@ If we are only interested in the covariance estimation we can use the function `
 ```{r, message = FALSE}
 res = local_outliers_ssMRCD(data = weatherAUT2021[, 1:6],
                             coords = weatherAUT2021[, c("lon", "lat")],
-                            N_assignments = N,
+                            groups = N,
                             lambda = 0.5,
                             k = 10)
 summary(res)
@@ -211,9 +211,9 @@ saveGIF(interval = 0.2,
 
 ## References
 
-GeoSphere Austria (2022): <https://data.hub.zamg.ac.at>.
+GeoSphere Austria (2022): <https://data.hub.geosphere.at>.
 
-Puchhammer P. and Filzmoser P. (2023): Spatially smoothed robust covariance estimation for local outlier detection. <https://doi.org/10.48550/arXiv.2305.05371>
+Puchhammer P. and Filzmoser P. (2023): Spatially smoothed robust covariance estimation for local outlier detection. <https://doi.org/10.1080/10618600.2023.2277875>
 
 
 

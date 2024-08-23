@@ -7,7 +7,7 @@
 #'
 #' @param data data matrix with measured values.
 #' @param coords matrix of coordinates of observations.
-#' @param N_assignments vector of neighborhood assignments.
+#' @param groups vector of neighborhood assignments.
 #' @param lambda scalar used for spatial smoothing (see also \code{\link[ssMRCD]{ssMRCD}}).
 #' @param weights weight matrix used in \code{\link[ssMRCD]{ssMRCD}}.
 #' @param k integer, if given the \code{k} nearest neighbors per observations are used to calculate next distances. Default value is \code{k = NULL}.
@@ -24,7 +24,7 @@
 #'    \tab \cr
 #'    \code{data} \tab matrix of observation values. \cr
 #'    \tab \cr
-#'    \code{N_assignments} \tab vector of neighborhood assignments. \cr
+#'    \code{groups} \tab vector of neighborhood assignments. \cr
 #'    \tab \cr
 #'    \code{k, dist} \tab specifications regarding neighbor comparisons. \cr
 #'    \tab \cr
@@ -45,36 +45,32 @@
 #' # data construction
 #' data = matrix(rnorm(2000), ncol = 4)
 #' coords = matrix(rnorm(1000), ncol = 2)
-#' N_assignments = sample(1:10, 500, replace = TRUE)
+#' groups = sample(1:10, 500, replace = TRUE)
 #' lambda = 0.3
 #'
 #' # apply function
 #' outs = local_outliers_ssMRCD(data = data,
 #'                              coords = coords,
-#'                              N_assignments = N_assignments,
+#'                              groups = groups,
 #'                              lambda = lambda,
 #'                              k = 10)
 #' outs
-local_outliers_ssMRCD = function(data, coords, N_assignments, lambda, weights = NULL, k = NULL, dist = NULL){
+local_outliers_ssMRCD = function(data, coords, groups, lambda, weights = NULL, k = NULL, dist = NULL){
 
   # check inputs
   data = as.matrix(data)
-  check_input(data, "matrix")
   coords = as.matrix(coords)
-  check_input(coords, "matrix")
-  check_input(N_assignments, "vector")
+  groups = as.vector(groups)
   check_input(lambda, "lambda")
   if(!is.null(k)) check_input(k, "scalar")
   if(!is.null(dist)) check_input(dist, "scalar")
 
-  data = as.matrix(data)
-  coords = as.matrix(coords)
   n <- nrow(data)
   p <- ncol(data)
-  N <- length(unique(N_assignments))
+  N <- length(unique(groups))
 
   # weights
-  weights_geo = geo_weights(coordinates = coords, N_assignments = N_assignments)
+  weights_geo = geo_weights(coordinates = coords, groups = groups)
   centersN = weights_geo$centersN
   if(is.null(weights)){
     message("Weights for ssMRCD are not given. Default setting of geographic inverse-distance weights is used.")
@@ -112,7 +108,7 @@ local_outliers_ssMRCD = function(data, coords, N_assignments, lambda, weights = 
   }
 
   # ssMRCD covariances
-  data_list = restructure_as_list(data, N_assignments)
+  data_list = restructure_as_list(data, groups)
   cov_object = ssMRCD(x = data_list, weights = weights, lambda = lambda)
 
   center <- matrix(NA, N, p)
@@ -127,7 +123,7 @@ local_outliers_ssMRCD = function(data, coords, N_assignments, lambda, weights = 
   # next distances
   next_distance <- rep(NA, n)
   for(i in 1:n){
-    Ni = N_assignments[i]
+    Ni = groups[i]
     cinv <- matrix(icov[Ni,], p, p)
     distn <- rep(NA, sum(matneighbor[i, ] != 0))
     kk = 1
@@ -147,14 +143,13 @@ local_outliers_ssMRCD = function(data, coords, N_assignments, lambda, weights = 
              cutoff = box$fence[2],
              coords = coords,
              data = data,
-             N_assignments = N_assignments,
+             groups = groups,
              k = k,
              dist = dist,
              centersN = centersN,
              matneighbor = matneighbor,
              ssMRCD = cov_object)
   class(out) = c("locOuts", "list")
-  check_locOut(out)
   return(out)
 }
 

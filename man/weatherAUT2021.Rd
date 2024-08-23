@@ -19,7 +19,7 @@ A data frame with 183 rows and 10 columns:
 }
 }
 \source{
-The original data was downloaded here (December 2022): \url{https://data.hub.zamg.ac.at/dataset/klima-v1-1m}.
+The original data was downloaded here (December 2022): \url{https://data.hub.geosphere.at/dataset/klima-v1-1m}.
 }
 \usage{
 weatherAUT2021
@@ -33,6 +33,6 @@ data(weatherAUT2021)
 summary(weatherAUT2021)
 }
 \references{
-Data Source: GeoSphere Austria - \url{https://data.hub.zamg.ac.at}.
+Data Source: GeoSphere Austria - \url{https://data.hub.geosphere.at}.
 }
 \keyword{datasets}

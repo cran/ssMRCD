@@ -68,13 +68,13 @@ set.seed(1)
 # create data set
 data = matrix(rnorm(2000), ncol = 4)
 coords = matrix(rnorm(1000), ncol = 2)
-N_assignments = sample(1:10, 500, replace = TRUE)
+groups = sample(1:10, 500, replace = TRUE)
 lambda = 0.3
 
 # calculate ssMRCD by using the local outlier detection method
 outs = local_outliers_ssMRCD(data = data,
                              coords = coords,
-                             N_assignments = N_assignments,
+                             groups = groups,
                              lambda = lambda,
                              k = 10)
 

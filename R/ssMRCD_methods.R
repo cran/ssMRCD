@@ -1,7 +1,7 @@
 # METHODS FOR cov_ssMRCD OBJECT
 
 
-
+##########################################################################################
 #' Summary Method for ssMRCD Object
 #'
 #' Summarises most important information of output \code{\link[ssMRCD]{ssMRCD}}.
@@ -40,8 +40,7 @@ summary.ssMRCD = function(object, ...){
 
 
 
-
-
+##########################################################################################
 #' Plot Method for ssMRCD Object
 #'
 #' Plots diagnostics for function output of \code{\link[ssMRCD]{ssMRCD}} regarding convergence behavior
@@ -82,13 +81,13 @@ summary.ssMRCD = function(object, ...){
 #' # create data set
 #' data = matrix(rnorm(2000), ncol = 4)
 #' coords = matrix(rnorm(1000), ncol = 2)
-#' N_assignments = sample(1:10, 500, replace = TRUE)
+#' groups = sample(1:10, 500, replace = TRUE)
 #' lambda = 0.3
 #'
 #' # calculate ssMRCD by using the local outlier detection method
 #' outs = local_outliers_ssMRCD(data = data,
 #'                              coords = coords,
-#'                              N_assignments = N_assignments,
+#'                              groups = groups,
 #'                              lambda = lambda,
 #'                              k = 10)
 #'
@@ -105,13 +104,17 @@ summary.ssMRCD = function(object, ...){
 #' @importFrom robustbase covMcd
 #' @importFrom  car ellipse
 #' @importFrom scales alpha
-plot.ssMRCD = function(x, type = c("convergence", "ellipses"),
-                           centersN = NULL, colour_scheme = "none",
-                           xlim_upper = 9, manual_rescale = 1,
-                           legend = TRUE, xlim = NULL, ylim = NULL,  ...){
+plot.ssMRCD = function(x,
+                       type = c("convergence", "ellipses"),
+                       centersN = NULL,
+                       colour_scheme = "none",
+                       xlim_upper = 9,
+                       manual_rescale = 1,
+                       legend = TRUE,
+                       xlim = NULL,
+                       ylim = NULL,
+                       ...){
 
-  # Check object
-  check_ssMRCD(x)
 
   if("convergence" %in% type){
     color_incr = "darkred"
@@ -151,8 +154,10 @@ plot.ssMRCD = function(x, type = c("convergence", "ellipses"),
 
     if(is.null(centersN)) {
       stop("You need to specify the centers of the neighborhoods (centersN) to plot covariance ellipses.")}
+    if(is.null(dim(centersN))){
+      centersN = cbind(centersN, 1) # one dimensional space
+    }
 
-    check_input(centersN, "matrix")
     N = length(x$MRCDcov)
     p = dim(x$mT)[1]
     lambda = x$lambda
@@ -274,4 +279,192 @@ plot.ssMRCD = function(x, type = c("convergence", "ellipses"),
 
   }
 }
+
+
+##########################################################################################
+#' Scale Data Locally
+#'
+#' @param ssMRCD \code{ssMRCD} object, see \code{\link[ssMRCD]{ssMRCD}}
+#' @param X matrix, new data to scale with ssMRCD estimation.
+#' @param groups vector, group assignments of new data \code{X}.
+#' @param multivariate logical, \code{TRUE} if multivariate structure should be used.
+#' Otherwise, univariate variances from the ssMRCD estimator is used.
+#' @param center_only logical, if \code{TRUE} observations are only centered.
+#'
+#' @return Returns matrix of observations. If \code{X = NULL} X from the ssMRCD object is
+#' used and sorted according to group numbering.
+#'
+#' @seealso \code{\link[ssMRCD]{ssMRCD}}
+#'
+#' @export
+#' @importFrom expm sqrtm
+#'
+#' @examples
+#'# create data set
+#' x1 = matrix(runif(200), ncol = 2)
+#' x2 = matrix(rnorm(200), ncol = 2)
+#' x = list(x1, x2)
+#'
+#' # create weighting matrix
+#' W = matrix(c(0, 1, 1, 0), ncol = 2)
+#'
+#' # calculate ssMRCD
+#' localCovs = ssMRCD(x, weights = W, lambda = 0.5)
+#'
+#' # scale used data
+#' scale_ssMRCD(localCovs,
+#'       multivariate = TRUE)
+#'
+#' # scale new data
+#' scale_ssMRCD(localCovs,
+#'       X = matrix(rnorm(20), ncol = 2, nrow = 10),
+#'       groups = rep(2, 10),
+#'       multivariate =TRUE)
+
+scale_ssMRCD = function(ssMRCD,
+                        X = NULL,
+                        groups = NULL,
+                        multivariate = FALSE,
+                        center_only = FALSE){
+
+  if(is.null(X) | is.null(groups)) {
+    X = do.call(rbind, ssMRCD$mX)
+    groups = rep(1:length(ssMRCD$MRCDcov), times = sapply(X = ssMRCD$mX,
+                                                          FUN = function(x) dim(x)[1]))
+  }
+  X = as.matrix(X)
+  N = ssMRCD$N
+
+  if(!multivariate){
+    for(i in 1:N){
+      ind = which(groups == i)
+      if(length(ind)!= 0){
+        if(!center_only){
+          X[groups == i,] = scale(x = X[groups == i,],
+                                  center = ssMRCD$MRCDmu[[i]],
+                                  scale = sqrt(diag(ssMRCD$MRCDcov[[i]])))
+        } else {
+          X[groups == i,] = scale(x = X[groups == i,],
+                                  center = ssMRCD$MRCDmu[[i]])
+        }
+      }
+    }
+  }
+
+  if(multivariate){
+    for(i in 1:N){
+      ind = which(groups == i)
+      if(length(ind)!= 0){
+        centered = t(X[groups == i,]) - matrix(ssMRCD$MRCDmu[[i]],
+                                               ncol = sum(groups == i),
+                                               nrow = dim(X)[2])
+        if(!center_only){
+          X[groups == i,] = t(expm::sqrtm(ssMRCD$MRCDicov[[i]]) %*% centered)
+        } else{
+          X[groups == i,]  = centered
+        }
+      }
+    }
+  }
+
+  return(X)
+}
+
+
+##########################################################################################
+outliers = function(ssMRCD){
+  # get indices of non local outliers in data
+
+  hsets = ssMRCD$hset
+  size_ns = sapply(ssMRCD$mX, function(x) dim(x)[1])
+  N = ssMRCD$N
+
+  ind = c()
+  size_sum = 0
+  for(i in 1:N){
+    ind = c(ind, hsets[[i]] + size_sum)
+    size_sum = size_sum + size_ns[i]
+  }
+
+  return(ind)   # returns index vector for sorted groups!
+}
+
+##########################################################################################
+#' Extracting Residuals from Local Fit
+#'
+#' @param object \code{ssMRCD} object, see \code{\link[ssMRCD]{ssMRCD}}.
+#' @param ... see details
+#'
+#' @return Returns either all residuals or the mean of the residual norms lower than the \code{alpha}- Quantile.
+#'
+#' @details Other input variables are: \tabular{ll}{
+#'    \code{remove_outliers} \tab logical (default \code{FALSE}). If TRUE, only residuals
+#'    from not outlying observations are calculated. If FALSE, trimmed residuals are used (see \code{alpha}). \cr
+#'    \tab \cr
+#'    \code{X} \tab matrix of new data, if data from the \code{ssMRCD} object is used. \cr
+#'    \tab \cr
+#'    \code{groups} \tab vector of groups for new data, if \code{NULL} data from the \code{ssMRCD} object is used. \cr
+#'    \tab \cr
+#'    \code{mean} \tab logical (default \code{FALSE}), specifying if mean of trimmed
+#'    observations is returned or all residuals. \cr
+#' }
+#'
+#
+#' If \code{X} and \code{groups} are provided, \code{alpha} is set to one and all residuals are used.
+#' If \code{remove_outliers} is TRUE, \code{alpha} is set to 1 automatically.
+#'
+#'
+#' @exportS3Method residuals ssMRCD
+#'
+#' @examples
+#'# create data set
+#' x1 = matrix(runif(200), ncol = 2)
+#' x2 = matrix(rnorm(200), ncol = 2)
+#' x = list(x1, x2)
+#'
+#' # create weighting matrix
+#' W = matrix(c(0, 1, 1, 0), ncol = 2)
+#'
+#' # calculate ssMRCD
+#' localCovs = ssMRCD(x, weights = W, lambda = 0.5)
+#'
+#' # residuals of model
+#' residuals(localCovs, remove_outliers = TRUE, mean = FALSE)
+#'
+#' # residuals of new data
+#' residuals(localCovs,
+#'       X = matrix(rnorm(20), ncol = 2, nrow = 10),
+#'       groups = rep(2, 10),
+#'       mean =TRUE)
+#'
+residuals.ssMRCD = function(object, ...){
+
+  args = list(...)
+  if(is.null(args$remove_outliers)) args$remove_outliers = FALSE
+  if(is.null(args$mean)) args$mean = FALSE
+
+  N = length(object$MRCDcov)
+  if(is.null(args$X) | is.null(args$groups)){
+    args$X = do.call(rbind, object$mX)
+    args$groups = rep(1:N, times = sapply(X = object$mX, FUN = function(x) dim(x)[1]))
+  }
+  n = dim(args$X)[1]
+
+  ind = 1:n
+  if(args$remove_outliers) ind = outliers(ssMRCD = object)  # only sensible for X, groups not new data
+  if(!args$remove_outliers)  alpha = object$alpha
+  if(args$remove_outliers)  alpha = 1
+
+  # calculate residuals
+  residuals = scale_ssMRCD(object, X = NULL, groups = NULL, multivariate = TRUE)
+  if(!args$mean) return(residuals)
+
+  # calculate mean of norm
+  res_norm = sqrt(diag(residuals[ind, ] %*% t(residuals[ind, ])))
+  ind = sort.int(res_norm, index.return = T)$ix[1:round(n*alpha)]
+  res_trimmed = res_norm[ind]
+
+  return(mean(res_trimmed))
+}
+
 

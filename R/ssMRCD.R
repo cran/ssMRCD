@@ -2,7 +2,9 @@
 #'
 #' The ssMRCD function calculates the spatially smoothed MRCD estimator from Puchhammer and Filzmoser (2023).
 #'
-#' @param x a list of matrices containing the observations per neighborhood sorted which can be obtained by the function \code{\link[ssMRCD]{restructure_as_list}}.
+#' @param x a list of matrices containing the observations per neighborhood sorted which can be obtained by the function \code{\link[ssMRCD]{restructure_as_list}}, or matrix or data frame containing data.
+#'          If matrix or data.frame, group vector has to be given.
+#' @param groups vector of neighborhood assignments
 #' @param weights weighting matrix, symmetrical, rows sum up to one and diagonals need to be zero (see also \code{\link[ssMRCD]{geo_weights}} or \code{\link[ssMRCD]{rescale_weights}} .
 #' @param lambda numeric between 0 and 1.
 #' @param TM target matrix (optional), default value is the covMcd from robustbase.
@@ -67,14 +69,27 @@
 #' # calculate ssMRCD
 #' ssMRCD(x, weights = W, lambda = 0.5)
 
-ssMRCD = function(x, weights, lambda, TM = NULL, alpha = 0.75,
-                  maxcond = 50, maxcsteps = 200,  n_initialhsets = NULL){
+ssMRCD = function(x,
+                  groups = NULL,
+                  weights,
+                  lambda,
+                  TM = NULL,
+                  alpha = 0.75,
+                  maxcond = 50,
+                  maxcsteps = 200,
+                  n_initialhsets = NULL){
 
   # input checks
-  check_input(x, "list")
   check_input(alpha, "alpha")
   check_input(weights, "W")
   check_input(lambda, "lambda")
+
+  if( (is.data.frame(x) | is.matrix(x)) & !is.null(groups)) {
+    x = as.matrix(x)
+    x = restructure_as_list(data = x, groups = groups)
+  } else if (!is.list(x)) {
+    warning("x should either be list of data matrices or data matrix with grouping given by groups input.")
+  }
 
   N <- length(x)
   p <- dim(x[[1]])[2]
@@ -84,10 +99,12 @@ ssMRCD = function(x, weights, lambda, TM = NULL, alpha = 0.75,
   Xsum <- do.call(rbind, x)
 
   if(is.null(TM)){
-    TM <- robustbase::covMcd(Xsum, alpha = alpha)$cov
-    message("No target matrix given. The ssMRCD will use the MCD defaultwise.")}
-  check_input(TM, "matrix")
-
+    TM <- tryCatch({
+      robustbase::covMcd(Xsum, alpha = alpha)$cov
+      }, error = function(cond) {
+        stop("MCD cannot be calculated automatically.")
+      })
+  }
 
   # transpose matrix X
   mXsum <- t(Xsum)
@@ -189,8 +206,6 @@ ssMRCD = function(x, weights, lambda, TM = NULL, alpha = 0.75,
 
   # check output
   class(temp) <- c("ssMRCD", "list")
-  check_input(temp, "ssMRCD")
 
   return(temp)
-
 }

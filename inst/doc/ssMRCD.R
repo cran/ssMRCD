@@ -20,7 +20,7 @@ head(weatherAUT2021)
 ## -----------------------------------------------------------------------------
 cut_lon = c(9:16, 18)
 cut_lat = c(46, 47, 47.5, 48, 49)
-N = ssMRCD::N_structure_gridbased(weatherAUT2021$lon, weatherAUT2021$lat, cut_lon, cut_lat)
+N = ssMRCD::groups_gridbased(weatherAUT2021$lon, weatherAUT2021$lat, cut_lon, cut_lat)
 table(N)
 N[N == 2] = 1
 N[N == 3] = 4
@@ -42,7 +42,7 @@ g1
 
 ## -----------------------------------------------------------------------------
 GW = geo_weights(coordinates = weatherAUT2021[, c("lon", "lat")], 
-                 N_assignments = N)
+                 groups = N)
 GW$W[4, ]
 
 g1 + 
@@ -64,7 +64,7 @@ g1 +
 set.seed(123)
 parameter_tuning(data = weatherAUT2021[, 1:6], 
                  coords = weatherAUT2021[, c("lon", "lat")], 
-                 N_assignments = N, 
+                 groups = N, 
                  repetitions = 3, 
                  k = c(5, 10, 15), 
                  lambda = c(0, 0.25, 0.5, 0.75))$plot
@@ -75,7 +75,7 @@ parameter_tuning(data = weatherAUT2021[, 1:6],
 ## ---- message = FALSE---------------------------------------------------------
 res = local_outliers_ssMRCD(data = weatherAUT2021[, 1:6],
                             coords = weatherAUT2021[, c("lon", "lat")],
-                            N_assignments = N,
+                            groups = N,
                             lambda = 0.5,
                             k = 10)
 summary(res)

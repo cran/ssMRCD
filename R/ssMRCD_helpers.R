@@ -14,12 +14,6 @@
 #' @importFrom robustbase Qn
 initial_step <- function(x, alpha, maxcond, mQ, misqL){
 
-  check_input(x, "matrix")
-  check_input(alpha, "scalar")
-  check_input(maxcond, "scalar")
-  check_input(mQ, "matrix")
-  check_input(misqL, "matrix")
-
   # transpose matrix X for more easy coding to mX
   mX <- t(x)
 
@@ -86,9 +80,6 @@ r6pack <- function(x, h, full.h, adjust.eignevalues = TRUE,
   # scalefn ... scale function, Qn ... robust
   # RETURN: matrix with 6 columns containing 6 initial subsets of size h, according to Hubert 2012
   #         contains indizes
-
-  check_input(x, "matrix")
-  check_input(h, "scalar")
 
   initset <- function(data, scalefn, P, h) {
     stopifnot(length(d <- dim(data)) == 2, length(h) ==
@@ -193,11 +184,6 @@ r6pack <- function(x, h, full.h, adjust.eignevalues = TRUE,
 
 rho_estimation = function(mX, mT, hsets.init, maxcond, scfac, h){
 
-  check_input(mX, "matrix")
-  check_input(mT, "matrix")
-  check_input(maxcond, "scalar")
-  check_input(scfac, "scalar")
-
   # setup
   n = dim(mX)[2]
   p = dim(mX)[1]
@@ -282,12 +268,6 @@ rho_estimation = function(mX, mT, hsets.init, maxcond, scfac, h){
 #
 # @return Returns the optimal h-sets for the initial combination of h-sets.
 cstep = function(init, maxcsteps, which_indices, lambda, weights, mT){
-
-  check_input(init, "list")
-  check_input(which_indices, "vector")
-  check_input(lambda, "scalar")
-  check_input(weights, "W")
-  check_input(mT, "matrix")
 
   N = length(init)
   p = init[[1]]$p # should be equal for all neighborhoods
@@ -378,11 +358,6 @@ cstep = function(init, maxcsteps, which_indices, lambda, weights, mT){
 dist_cstep <- function(init, i, lambda, weights){
   # returns vector of distances for each observation in mX
 
-  check_input(init, "list")
-  check_input(i, "scalar")
-  check_input(lambda, "scalar")
-  check_input(weights, "W")
-
   N = length(init)
   p = init[[i]]$p
 
@@ -407,10 +382,6 @@ dist_cstep <- function(init, i, lambda, weights){
 #
 # @return Returns value of objective function.
 objective_init = function(init_object, lambda , weights){
-
-  check_input(init_object, "list")
-  check_input(lambda, "scalar")
-  check_input(weights, "W")
 
   N = length(init_object)
 
@@ -449,10 +420,6 @@ objective_init = function(init_object, lambda , weights){
 #' objective_matrix(list(k1, k2), 0.5, W)
 objective_matrix = function(matrix_list, lambda, weights){
 
-  check_input(matrix_list, "list")
-  check_input(lambda, "scalar")
-  check_input(weights, "W")
-
   N = length(matrix_list)
   p = dim(matrix_list[[1]])[1]
 
@@ -483,12 +450,6 @@ objective_matrix = function(matrix_list, lambda, weights){
 #
 # @return Returns back-transformed observations and covariance matrices.
 back_transformation = function(best_ret, TM, alpha, mQ, msqL){
-
-  check_input(TM, "matrix")
-  check_input(alpha, "scalar")
-  check_input(mQ, "matrix")
-  check_input(msqL, "matrix")
-  check_input(best_ret, "list")
 
   N = length(best_ret$out)
   p = length(best_ret$out[[1]]$vMu)
@@ -589,7 +550,6 @@ MDcons_robustbase = function (p, alpha) {
 
 monotonic_decreasing = function(x){
 
-  check_input(x, "vector")
   x = stats::na.omit(x)
   n = length(x)
 
@@ -606,8 +566,6 @@ monotonic_decreasing = function(x){
 
 
 linear_combination = function(x){
-
-  check_input(x, "list")
 
   N = x$N
   p = dim(x$MRCDcov[[1]])

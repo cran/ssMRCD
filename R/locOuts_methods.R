@@ -20,13 +20,13 @@
 #' # make locOuts object
 #' data = matrix(rnorm(2000), ncol = 4)
 #' coords = matrix(rnorm(1000), ncol = 2)
-#' N_assignments = sample(1:10, 500, replace = TRUE)
+#' groups = sample(1:10, 500, replace = TRUE)
 #' lambda = 0.3
 #'
 #'# local outlier detection
 #' outs = local_outliers_ssMRCD(data = data,
 #'                              coords = coords,
-#'                              N_assignments = N_assignments,
+#'                              groups = groups,
 #'                              lambda = lambda,
 #'                              k = 10)
 #'
@@ -59,7 +59,7 @@ summary.locOuts = function(object, ...){
 #' @param colour character specifying the color scheme (see details). Possible values \code{"all", "onlyOuts", "outScore"}.
 #' @param focus an integer being the index of the observation whose neighborhood should be analysed more closely.
 #' @param pos integer specifying the position of the text "cut-off" in the histogram (see \code{\link{par}}).
-#' @param alpha scalar specifying the transparancy level of the points plotted for plot type \code{"spatial", "3D"} and \code{"lines"}.
+#' @param alpha scalar specifying the transparency level of the points plotted for plot type \code{"spatial", "3D"} and \code{"lines"}.
 #' @param data optional data frame or matrix used for plot of type \code{"line"}. Will be used to plot lines based scaled \code{data} instead of the data used for local outlier detection.
 #' @param add_map TRUE if a map should be plotted along the line plot (\code{type = "lines"}).
 #' @param ... further parameters passed on to base-R plotting functions.
@@ -92,13 +92,13 @@ summary.locOuts = function(object, ...){
 #' # make locOuts object
 #' data = matrix(rnorm(2000), ncol = 4)
 #' coords = matrix(rnorm(1000), ncol = 2)
-#' N_assignments = sample(1:10, 500, replace = TRUE)
+#' groups = sample(1:10, 500, replace = TRUE)
 #' lambda = 0.3
 #'
 #'# local outlier detection
 #' outs = local_outliers_ssMRCD(data = data,
 #'                              coords = coords,
-#'                              N_assignments = N_assignments,
+#'                              groups = groups,
 #'                              lambda = lambda,
 #'                              k = 10)
 #'

@@ -1,6 +1,8 @@
 # HELPING FUNCTIONS FOR APPLICATIONS
 
 
+
+
 #' Restructure Data Matrix as List
 #'
 #' This function restructures neighborhood information given by a data matrix
@@ -8,10 +10,10 @@
 #' of data matrices used in \code{\link[ssMRCD]{ssMRCD}}.
 #'
 #' @param data data matrix with all observations.
-#' @param neighborhood_vec numeric neighborhood assignment vector.
-#'                         Should contain numbers from \code{1} to \code{N} and not leave integers out.
+#' @param groups numeric neighborhood assignment vector.
 #'
 #' @return Returns a list containing the observations per neighborhood assignment.
+#' The list is sorted according to the order of the first appearance in the groups vector.
 #'
 #' @examples
 #'
@@ -22,23 +24,24 @@
 #' restructure_as_list(data, N_assign)
 #'
 #' @export
-restructure_as_list = function(data, neighborhood_vec){
+restructure_as_list = function(data, groups){
 
   data = as.matrix(data)
-  check_input(data, "matrix")
-  check_input(neighborhood_vec, "vector")
-  check_input(neighborhood_vec, "valid_N_vec")
+  groups = as.numeric(as.factor(groups))
 
   p = dim(data)[2]
-  N = length(unique(neighborhood_vec))
+  N = length(unique(groups))
 
   x = list()
   for(i in 1:N){
-    x = append(x, list(data[neighborhood_vec == i, 1:p]))
+    x = append(x, list(data[groups == i, 1:p]))
   }
 
   return(x)
 }
+
+
+
 
 
 #' Rescale Weight Matrix
@@ -63,13 +66,11 @@ restructure_as_list = function(data, neighborhood_vec){
 rescale_weights = function(W){
 
   W = as.matrix(W)
-  stopifnot(all.equal(unname(diag(W)), rep(0, dim(W)[1])))
 
   W = W * (rowSums(W)^(-1))
   if(any(!is.finite(W))){
     stop("No finite weight matrix possible. There should be at least one positive value per row.")
   }
-  check_input(W, "W")
 
   return(W)
 }
@@ -81,7 +82,7 @@ rescale_weights = function(W){
 #' Calculates a inverse-distance based weight matrix for the function \code{\link[ssMRCD]{ssMRCD}} (see details).
 #'
 #' @param coordinates matrix of coordinates of observations.
-#' @param N_assignments vector of neighborhood assignments.
+#' @param groups vector of neighborhood groups.
 #'
 #' @details
 #' First, the centers (means of the coordinates given) \eqn{c_i} of each neighborhood is calculated.
@@ -95,22 +96,22 @@ rescale_weights = function(W){
 #'
 #' @examples
 #' coordinates = matrix(rnorm(1000), ncol = 2, nrow = 500)
-#' N_ass = sample(1:5, 500, replace = TRUE)
+#' groups = sample(1:5, 500, replace = TRUE)
 #'
-#' geo_weights(coordinates, N_ass)
+#' geo_weights(coordinates, groups)
 #'
 #' @export
-geo_weights = function(coordinates, N_assignments){
+geo_weights = function(coordinates, groups){
 
   coordinates = as.matrix(coordinates)
-  check_input(N_assignments, "vector")
 
-  N = length(unique(N_assignments))
+  N = length(unique(groups))
   p_coord = dim(coordinates)[2]
+  groups = as.numeric(as.factor(groups))
 
   centersN = matrix(NA, N, p_coord)
   for(i in 1:N) {
-    tmp = coordinates[N_assignments == i,]
+    tmp = coordinates[groups == i,]
     centersN[i, ] = colMeans(tmp)
   }
 
@@ -119,6 +120,35 @@ geo_weights = function(coordinates, N_assignments){
 
   return(list(W = W, centersN = centersN))
 }
+
+
+
+
+# Smoothing structure
+#' Band weight matrix for time series groupings
+#'
+#' @param N number of groups.
+#' @param off_diag vector for off-diagonal values unequal to zero.
+#'
+#' @return Returns weight matrix for time series groups appropriate for \code{\link[ssMRCD]{ssMRCD}}.
+#' @export
+#'
+#' @seealso \code{\link[ssMRCD]{geo_weights}}, \code{\link[ssMRCD]{rescale_weights}}
+#'
+#' @examples
+#' time_weights(N = 10, off_diag = c(2,1))
+#'
+time_weights = function(N, off_diag) {
+  w = diag(0, N)
+  for( i in 1:length(off_diag)){
+    diag(w[-c(1:i), -c((N+1-i):N) ]) = off_diag[i]
+    diag(w[-c((N+1-i):N), -c(1:i)]) = off_diag[i]
+  }
+  return(rescale_weights(w))
+}
+
+
+
 
 
 
@@ -143,29 +173,80 @@ geo_weights = function(coordinates, N_assignments){
 #' cut_lat = c(46, 47, 47.5, 48, 49)
 #'
 #' # create neighborhood assignments
-#' N_structure_gridbased(weatherAUT2021$lon,
+#' groups_gridbased(weatherAUT2021$lon,
 #'                       weatherAUT2021$lat,
 #'                       cut_lon,
 #'                       cut_lat)
 
-N_structure_gridbased = function(x, y, cutx, cuty){
+groups_gridbased = function(x, y, cutx, cuty){
 
-  check_input(x, "vector")
-  check_input(y, "vector")
-  check_input(cutx, "vector")
-  check_input(cuty, "vector")
-
-  N = c()
+  groups = c()
   Nvec = seq(1,(length(cutx)-1)*(length(cuty)-1))
   N_matrix = matrix(Nvec, nrow = length(cuty)-1, ncol = length(cutx)-1)
   for(i in 1:length(x)){
     xi = sum(x[i] >= cutx)
     yi = sum(y[i] >= cuty)
-    N[i] = N_matrix[yi, xi]
+    groups[i] = N_matrix[yi, xi]
   }
 
-  N = as.numeric(as.factor(N))
-  return(N)
+  groups = as.numeric(as.factor(groups))
+  return(groups)
 }
 
 
+##########################################################################################
+colour_to_ansi <- function(colour) {
+  # Note ANSI colour codes
+  colour_codes <- list(
+    "black" = 30,
+    "red" = 31,
+    "green" = 32,
+    "yellow" = 33,
+    "blue" = 34,
+    "magenta" = 35,
+    "cyan" = 36,
+    "white" = 37
+  )
+
+  # Check colour provided in codes above
+  if ((colour %in% names(colour_codes) == FALSE & is.character(colour)) |
+      (is.numeric(colour) & (colour > 255 | colour < 0) ) ) {
+    stop(
+      paste0(
+        "Colour provided (", colour, ") can't be converted to ANSI. ",
+        "Must be one of: \n", paste(names(colour_codes), collapse = ",")
+      )
+    )
+  }
+
+  # Create ANSI version of colour
+  if(is.character(colour)){
+    ansi_colour <- paste0("\033[", colour_codes[[colour]], "m")
+  }
+  if(is.numeric(colour)){
+    ansi_colour <- paste0("\033[38;5;", colour, "m")
+  }
+
+  return(ansi_colour)
+}
+
+
+
+
+coloured_print <- function(text, colour = "green", trace = T) {
+
+  # algo messages
+  if(colour == "parsetting_message") colour = "blue"
+  if(colour == "general_message") colour = "blue"
+  if(colour == "message") colour = "blue"
+  # algo problems
+  if(colour == "root_finder_issue") colour = 9
+  if(colour == "constraint_issue") colour = 9
+  if(colour == "convergence_issue") colour = 9
+  if(colour == "problem") colour = 9
+  # additional information
+  if(colour == "trace") colour = 117
+  if(colour == "info") colour = 117
+
+  if(trace) cat(colour_to_ansi(colour), text, "\033[0m\n")
+}
