@@ -5,10 +5,11 @@
 \title{Spatially Smoothed MRCD Estimator}
 \usage{
 ssMRCD(
-  x,
+  X,
   groups = NULL,
   weights,
-  lambda,
+  lambda = 0.5,
+  tuning = list(method = NULL, plot = FALSE, k = 10, repetitions = 5, cont = 0.05),
   TM = NULL,
   alpha = 0.75,
   maxcond = 50,
@@ -17,14 +18,16 @@ ssMRCD(
 )
 }
 \arguments{
-\item{x}{a list of matrices containing the observations per neighborhood sorted which can be obtained by the function \code{\link[ssMRCD]{restructure_as_list}}, or matrix or data frame containing data.
+\item{X}{a list of matrices containing the observations per neighborhood sorted, or matrix or data frame containing data.
 If matrix or data.frame, group vector has to be given.}
 
 \item{groups}{vector of neighborhood assignments}
 
-\item{weights}{weighting matrix, symmetrical, rows sum up to one and diagonals need to be zero (see also \code{\link[ssMRCD]{geo_weights}} or \code{\link[ssMRCD]{rescale_weights}} .}
+\item{weights}{weighting matrix, symmetrical, rows sum up to one and diagonals need to be zero (see also \code{\link[ssMRCD]{geo_weights}} or \code{\link[ssMRCD]{time_weights}} .}
 
 \item{lambda}{numeric between 0 and 1.}
+
+\item{tuning}{default NULL. List of tuning specifications if lambda contains more than one value. See Details.}
 
 \item{TM}{target matrix (optional), default value is the covMcd from robustbase.}
 
@@ -37,7 +40,8 @@ If matrix or data.frame, group vector has to be given.}
 \item{n_initialhsets}{number of initial h-sets, default is 6 times number of neighborhoods.}
 }
 \value{
-An object of class \code{"ssMRCD"} containing the following elements:\tabular{ll}{
+The output depends on whether parameters are tuned.
+If there is no tuning the output is an object of class \code{"ssMRCD"} containing the following elements:\tabular{ll}{
    \code{MRCDcov} \tab List of ssMRCD-covariance matrices sorted by neighborhood. \cr
    \tab \cr
    \code{MRCDicov} \tab List of inverse ssMRCD-covariance matrices sorted by neighborhood. \cr
@@ -71,9 +75,40 @@ initial h-set combinations (rows) and iterations (columns). \cr
 after c-step iterations. \cr
    \code{Kcov} \tab returns MRCD-estimates without smoothing. \cr
 }
+
+If parameters are tuned, the output consists of:\tabular{ll}{
+   \code{ssMRCD} \tab Object of class ssMRCD with optimally selected parameter \code{lambda}. \cr
+   \tab \cr
+   \code{tuning_grid} \tab Vector of lambda to tune over given by the input. \cr
+   \tab \cr
+   \code{tuning_values} \tab If \code{tuning$method = "residuals"} then a vector returning
+   the values of the residual criteria for the corresponding values of lambda in \code{tuning_grid}.\cr
+   \tab If \code{tuning$method = "local contamination"}, then matrix with false negative rates
+    and the total number of flagged outliers. \cr
+   \tab \cr
+   \code{plot} \tab If \code{tuning$plot = TRUE}, then a plot for parameter tuning is added. \cr
+
+}
 }
 \description{
 The ssMRCD function calculates the spatially smoothed MRCD estimator from Puchhammer and Filzmoser (2023).
+}
+\details{
+The necessary list elements for the parameter \code{tuning} depend on the method specified.
+For both tuning approaches (residual-based or contamination-based) the element \code{method} needs to be specified to
+\code{"residuals"} and \code{"local contamination"}, respectively. The boolean list element \code{plot} is available for both methods and
+specifies if a plot should be constructed after tuning.
+
+For \code{tuning$method = "local contamination"}, additional information needs to be passed.
+The number of nearest neighbors \code{tuning$k} used for the local outlier detection method
+is \code{10} by default. The percentage of exchanged/contaminated observations is specified
+by \code{tuning$cont} and is set to \code{0.05} by default. Also the coordinates must be given in  \code{tuning$coords}
+and the number of repetitions for the switching procedure, \code{tuning$repetitions}.
+
+For \code{tuning$method = "local contamination"} no optimal value is returned but the choice has to
+be made by the user. Be aware that the FNR does not take into account that there are also natural outliers
+included in the data set that might or might not be found. The best parameter selection depends on the goal of the analysis
+and whether false negatives should be avoided or whether the number of flagged outliers should be low.
 }
 \examples{
 # create data set
@@ -85,11 +120,11 @@ x = list(x1, x2)
 W = matrix(c(0, 1, 1, 0), ncol = 2)
 
 # calculate ssMRCD
-ssMRCD(x, weights = W, lambda = 0.5)
+ssMRCD(X = x, weights = W, lambda = 0.5)
 }
 \references{
-Puchhammer P. and Filzmoser P. (2023): Spatially smoothed robust covariance estimation for local outlier detection. \doi{10.48550/arXiv.2305.05371}
+Puchhammer P. and Filzmoser P. (2023). Spatially Smoothed Robust Covariance Estimation for Local Outlier Detection. \emph{Journal of Computational and Graphical Statistics, 33(3), 928–940}.  \doi{10.1080/10618600.2023.2277875}
 }
 \seealso{
-\code{\link[ssMRCD]{plot.ssMRCD}, \link[ssMRCD]{summary.ssMRCD}, \link[ssMRCD]{restructure_as_list}}
+\code{\link[ssMRCD]{plot.ssMRCD}}
 }

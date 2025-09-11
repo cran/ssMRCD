@@ -1,4 +1,4 @@
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE, 
   warning = FALSE, 
@@ -9,43 +9,61 @@ knitr::opts_chunk$set(
 ## -----------------------------------------------------------------------------
 library(ssMRCD)
 library(ggplot2)
+library(dplyr)
+library(rnaturalearth)
+library(rnaturalearthdata)
 
-## ---- eval = FALSE------------------------------------------------------------
-#  ? weatherAUT2021
+## ----eval = FALSE-------------------------------------------------------------
+# ? weatherAUT2021
 
 ## ----setup--------------------------------------------------------------------
 data("weatherAUT2021")
 head(weatherAUT2021)
 
-## -----------------------------------------------------------------------------
-cut_lon = c(9:16, 18)
-cut_lat = c(46, 47, 47.5, 48, 49)
-N = ssMRCD::groups_gridbased(weatherAUT2021$lon, weatherAUT2021$lat, cut_lon, cut_lat)
-table(N)
-N[N == 2] = 1
-N[N == 3] = 4
-N[N == 5] = 4
-N[N == 6] = 7
-N[N == 11] = 15
-N = as.numeric(as.factor(N))
+rownames(weatherAUT2021) = weatherAUT2021$name
 
 ## -----------------------------------------------------------------------------
-g1 = ggplot() + 
-  geom_text(data = weatherAUT2021, aes(x = lon, y = lat, col = as.factor(N), label = N)) + 
+# Load Austria as sf object
+austria <- ne_countries(scale = "medium", country = "Austria", returnclass = "sf")
+
+g_boundary = ggplot() + 
+  geom_sf(data = austria, fill = "transparent", color = "black") +
+  theme_classic()
+
+## -----------------------------------------------------------------------------
+# group by spatial grid
+cut_lon = c(9:16, 18)
+cut_lat = c(46, 47, 47.5, 48, 49)
+groups = groups_gridbased(x = weatherAUT2021$lon, 
+                     y = weatherAUT2021$lat, 
+                     cutx = cut_lon, 
+                     cuty = cut_lat)
+table(groups)
+
+# join particularly small groups together
+groups[groups == 2] = 1
+groups[groups == 3] = 4
+groups[groups == 5] = 4
+groups[groups == 6] = 7
+groups[groups == 11] = 15
+groups = as.numeric(as.factor(groups))
+table(groups)
+
+## -----------------------------------------------------------------------------
+g_groups = g_boundary + 
+  geom_text(data = weatherAUT2021, aes(x = lon, y = lat, col = as.factor(groups), label = groups)) + 
   geom_hline(aes(yintercept = cut_lat), lty = "dashed", col = "gray") +
   geom_vline(aes(xintercept = cut_lon), lty = "dashed", col = "gray") +
   labs(x = "Longitude", y = "Latitude", title = "Austrian Weather Stations: Neighborhood Structure") +
-  coord_fixed(1.4) + 
   theme_classic() +
   theme(legend.position = "none")
-g1
+
+g_groups
 
 ## -----------------------------------------------------------------------------
 GW = geo_weights(coordinates = weatherAUT2021[, c("lon", "lat")], 
-                 groups = N)
-GW$W[4, ]
-
-g1 + 
+                 groups = groups)
+g_weights = g_groups + 
   labs(title = "Austrian Weather Stations: Weighting Matrix W") +
   geom_segment(aes(x = GW$centersN[4, 1], 
                    y = GW$centersN[4, 2], 
@@ -55,81 +73,87 @@ g1 +
                arrow = arrow(length = unit(0.25, "cm")),
                linewidth = 2,
                col = "blue")+
-  geom_text(aes(x = GW$centersN[, 1], y = GW$centersN[, 2], label = 1:length(GW$centersN[, 2])))
+  geom_text(aes(x = GW$centersN[, 1],
+                y = GW$centersN[, 2], 
+                label = 1:length(GW$centersN[, 2])))
 
-## ---- eval = FALSE------------------------------------------------------------
-#  ? parameter_tuning
+g_weights
 
-## ---- eval = TRUE, message = FALSE--------------------------------------------
+## ----eval = FALSE-------------------------------------------------------------
+# ? ssMRCD
+
+## ----eval = TRUE, message = FALSE---------------------------------------------
 set.seed(123)
-parameter_tuning(data = weatherAUT2021[, 1:6], 
-                 coords = weatherAUT2021[, c("lon", "lat")], 
-                 groups = N, 
-                 repetitions = 3, 
-                 k = c(5, 10, 15), 
-                 lambda = c(0, 0.25, 0.5, 0.75))$plot
+out = ssMRCD(X = weatherAUT2021[, 1:6], 
+             groups = groups, 
+             weights = GW$W, 
+             lambda = 0.5,
+             tuning = NULL)
+class(out)
 
-## ---- eval = FALSE------------------------------------------------------------
-#  ? local_outliers_ssMRCD
+## ----eval = TRUE, message = FALSE---------------------------------------------
 
-## ---- message = FALSE---------------------------------------------------------
-res = local_outliers_ssMRCD(data = weatherAUT2021[, 1:6],
-                            coords = weatherAUT2021[, c("lon", "lat")],
-                            groups = N,
-                            lambda = 0.5,
-                            k = 10)
-summary(res)
+# plot the tolerance ellipses in the geographical space
+plots = plot(x = out, 
+             type = c("convergence","ellipses", "ellipses_geo"),
+             geo_centers = GW$centersN, 
+             variables = c("s", "t"),
+             manual_rescale = 0.001)
 
-## ---- message = FALSE---------------------------------------------------------
-cat(weatherAUT2021$name[res$outliers], sep = ",\n")
+plots$plot_geoellipses +
+  geom_sf(data = austria, fill = "transparent", color = "black")
 
-## -----------------------------------------------------------------------------
-covariance_res = res$ssMRCD
-plot(covariance_res, 
-     centersN = res$centersN, 
-     manual_rescale = 0.5, 
-     type = c("convergence", "ellipses"), 
-     colour_scheme = "regularity", 
-     legend = TRUE,
-     xlim = c(9, 19))
+plots$plot_ellipses
+plots$plot_convergence
 
-## -----------------------------------------------------------------------------
-biplot(stats:: princomp(weatherAUT2021[, 1:6],
-                        cor  = TRUE, 
-                        covmat = robustbase::covMcd(weatherAUT2021[, 1:6])), 
-       col = c("grey", "black"))
+## ----eval = TRUE, message = FALSE---------------------------------------------
+set.seed(123)
+out = ssMRCD(X = weatherAUT2021[, 1:6], 
+             groups = groups, 
+             weights = GW$W, 
+             tuning = list(method = "local contamination", 
+                           plot = TRUE,
+                           k = 10, 
+                           coords = weatherAUT2021[, c("lon", "lat")],
+                           cont = 0.05, 
+                           repetitions = 3), 
+             lambda = c(0.25, 0.5, 0.75))
 
-## ---- eval = FALSE------------------------------------------------------------
-#  ? plot.locOuts
+## ----eval = TRUE, message = FALSE---------------------------------------------
+set.seed(123)
+out = ssMRCD(X = weatherAUT2021[, 1:6], 
+             groups = groups, 
+             weights = GW$W, 
+             tuning = list(method = "residuals", 
+                           plot = TRUE), 
+             lambda = seq(0, 1, 0.1))
 
-## ---- fig.dim = c(5,3.5)------------------------------------------------------
-plot(res, type = "hist", pos = 4)
+## ----eval = FALSE-------------------------------------------------------------
+# ? locOuts
 
-## -----------------------------------------------------------------------------
-plot(res, type = "spatial", colour = "outScore", xlim = c(9.5, 19))
+## ----eval = FALSE, message = FALSE--------------------------------------------
+# set.seed(123)
+# res = locOuts(data = weatherAUT2021[, 1:6],
+#                             coords = weatherAUT2021[, c("lon", "lat")],
+#                             groups = groups,
+#                             lambda = 0.5,
+#                             k = 10)
+# summary(res)
 
-## ---- fig.dim = c(7,3)--------------------------------------------------------
-# SCHOECKL
-plot(res, type = "lines", focus = res$outliers[3])
+## ----eval = FALSE,  message = FALSE-------------------------------------------
+# cat(weatherAUT2021$name[res$outliers], sep = ",\n")
 
-## ---- fig.dim = c(7,4)--------------------------------------------------------
-plot(res, type = "3D", colour = "outScore", theta = 0, phi = 10)
+## ----eval = FALSE-------------------------------------------------------------
+# ? plot.locOuts
 
-## ---- eval = FALSE, include = T-----------------------------------------------
-#  library(animation)
-#  
-#  # fineness of movement
-#  n = 90
-#  param = rbind(cbind(rep(0, 2*n + n/2), c(seq(90, 0, length.out = n), seq(0, 90, length.out = n), seq(90, 30, length.out = n/2))),
-#                cbind(c(seq(0, 90, length.out = n), seq(90, 0, length.out = n)), rep(30, 2*n)),
-#                cbind(rep(0, n/2), seq(30, 90, length.out = n/2)))
-#  
-#  # use function saveGIF
-#  saveGIF(interval = 0.2,
-#          movie.name = "local_outliers_3D.gif",
-#          expr = {
-#            for (i in 1:dim(param)[1]) {
-#              plot(outs, type = "3D", colour = "outScore", theta = param[i, 1], phi = param[i, 2])
-#            }}
-#          )
+## ----eval = FALSE,fig.dim = c(5,3.5)------------------------------------------
+# plot(res, type = "hist")$p_hist
+
+## ----eval = FALSE-------------------------------------------------------------
+# plot(res, type = "spatial")$p_spatial +
+#   geom_sf(data = austria, fill = "transparent", color = "black")
+
+## ----eval = FALSE, fig.dim = c(7,3)-------------------------------------------
+# # SCHOECKL
+# plot(res, type = "pcp", observation = "SCHOECKL", scale = "zscore")$p_pcp
 

@@ -19,7 +19,7 @@ test_that("Get errors for input weights", {
   x2 = matrix(rnorm(300), ncol = 3)
   expect_error(ssMRCD(list(x1, x2),
                       lambda = 0.4,
-                      weights = matrix(c(1,1,1,1), 2)))
+                      weights = matrix(c(1,-1,1,1), 2)))
 })
 
 test_that("Get errors for input weights", {
@@ -27,7 +27,7 @@ test_that("Get errors for input weights", {
   x2 = matrix(rnorm(300), ncol = 3)
   expect_error(ssMRCD(list(x1, x2),
                       lambda = 0.4,
-                      weights = data.frame(matrix(c(0,1,1,0), 2))))
+                      weights = data.frame(matrix(c(0,-1,-1,0), 2))))
 })
 
 test_that("Get errors for input alpha", {

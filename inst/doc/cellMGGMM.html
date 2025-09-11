@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Cellwise Robust Multi-Group Gaussian Mixture Model</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Cellwise Robust Multi-Group Gaussian
+Mixture Model</h1>
+
+
+
+<p>This vignette reproduces the weather example described in Puchhammer,
+Wilms and Filzmoser (2025). The original data is from Geosphere Austria
+(2022) and included in this package.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ssMRCD)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span></code></pre></div>
+<div id="data-preparation" class="section level2">
+<h2>Data Preparation</h2>
+<p>The original data from GeoSphere Austria (2022) is pre-cleaned and
+saved in the data frame object <code>weatherAUT2021</code>. Additional
+information can be found on the helping page.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># get meta data for the data set</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>? weatherAUT2021</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># load the data</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">data</span>(<span class="st">&quot;weatherAUT2021&quot;</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># inspect the data</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(weatherAUT2021)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;        p     s   vv    t rsum  rel             name      lon      lat  alt</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 941.35 154.5 2.15 6.15 49.5 77.5    AIGEN/ENNSTAL 14.13833 47.53278  641</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2 945.80 172.5 2.95 6.25 39.5 76.0      ALLENTSTEIG 15.36694 48.69083  599</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3 985.50 152.0 2.55 8.20 46.5 78.0        AMSTETTEN 14.89500 48.10889  266</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4 893.20 123.5 1.85 5.10 66.0 74.5      BAD GASTEIN 13.13333 47.11055 1092</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5 984.50 176.0 1.50 8.45 40.5 75.0 BAD GLEICHENBERG 15.90361 46.87222  269</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 6 992.05 188.5 2.20 8.95 60.5 77.0  BAD RADKERSBURG 15.99333 46.69222  207</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="co"># select variables, station names and number of observations</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>data <span class="ot">=</span> weatherAUT2021 <span class="sc">%&gt;%</span> <span class="fu">select</span>(p<span class="sc">:</span>rel)</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>stations <span class="ot">=</span> weatherAUT2021<span class="sc">$</span>name</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>n <span class="ot">=</span> <span class="fu">dim</span>(data)[<span class="dv">1</span>]</span></code></pre></div>
+<p>The predefined groups are based in the underlying geographical
+landscape consisting of Alpine mountains, hills and flatter areas in
+Austria.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># build 5 groups of observations based on spatial proximity and geography</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>cut_lon <span class="ot">=</span> <span class="fu">c</span>(<span class="fu">min</span>(weatherAUT2021<span class="sc">$</span>lon)<span class="sc">-</span><span class="fl">0.2</span>, <span class="dv">12</span>, <span class="dv">16</span>, <span class="fu">max</span>(weatherAUT2021<span class="sc">$</span>lon) <span class="sc">+</span> <span class="fl">0.2</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>cut_lat <span class="ot">=</span> <span class="fu">c</span>(<span class="fu">min</span>(weatherAUT2021<span class="sc">$</span>lat)<span class="sc">-</span><span class="fl">0.2</span>, <span class="dv">48</span>, <span class="fu">max</span>(weatherAUT2021<span class="sc">$</span>lat) <span class="sc">+</span> <span class="fl">0.2</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>groups <span class="ot">=</span> ssMRCD<span class="sc">::</span><span class="fu">groups_gridbased</span>(weatherAUT2021<span class="sc">$</span>lon, </span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>                                  weatherAUT2021<span class="sc">$</span>lat, </span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>                                  cut_lon, </span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>                                  cut_lat)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>N <span class="ot">=</span> <span class="fu">length</span>(<span class="fu">unique</span>(groups))</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(groups)</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; groups</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1  2  3  4  5 </span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 31 80 35 16 21</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># calculate MG-GMM</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>model <span class="ot">=</span> <span class="fu">cellMGGMM</span>(<span class="at">X =</span> data, <span class="at">groups =</span> groups,</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>                  <span class="at">nsteps =</span> <span class="dv">100</span>, <span class="at">alpha =</span> <span class="fl">0.5</span>,</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>                  <span class="at">maxcond =</span> <span class="dv">100</span>)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Iteration finished due to computational inaccuracies (increase of objective function in last step of size: 0.0001193831180899). Check convergence plot.</span></span></code></pre></div>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAqAAAAGwCAMAAABB3CfxAAAAYFBMVEUAAAAAADoAAGYAOpAAZrY6AAA6ADo6AGY6OpA6kNtmAABmADpmtrZmtv+QOgCQZgCQkGaQtpCQ2/+2ZgC225C2/7a2///bkDrb2//b/7bb////tmb/25D//7b//9v////dL1BBAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAOHklEQVR4nO3dC3OjyBWGYXzbXWliJzHJsDG6/P9/uTQXWZAFNaf74G/k96lK1VRmrLZn3m2gJZriDAgrvvobAJYQKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKQRKKStC/T0VrQefzp9O8DYqkCrYtf9oh5+AfhaE+jp7ZJl9fTh8M0AU2sCPe5fh1/WHOSxCWZQSFt5DtpPobPnoAUQxSXQ5iDfvfrs/MmqFaI4Bbr1y+FeESikOQV6c6GeQBHFJ9DbC/UEiigugUYsMxEoorgEGrFQT6CIwgwKaV7noDcX6te8HL4vqYV6qsWU1DoogWJq40CX32IlUExJLdQTKKakFuoJFFNSy0wEiimphXoCxRQzKKRJLdQTKKZYqIc0FuohjUAhzTXQw8vr3G8RKKI4LTN9vqXJMhNS+Myg/cU7MyhSuV3Fh+t3AkUqt3PQ8uGdQJHM7yKpKnYEilSOV/GHl6IgUKTxXGY6vREoErFQD2lSgVIopggU0ggU0ggU0ggU0ggU0ggU0ggU0ggU0iyBHvfF00eZ9hBOAkUUQ6D1w3v19HHcJxVKoIiyPtCwK0PYjqFKegongSLK+kDDvjYh0LTHxBIoothn0DLpMbEEiijmc9Bq/rOe9nEJFBPGq/iieHh3GJdAMcE6KKQRKKRZruKX9wxJGZdAMWGeQdNWmQgUceyH+PI5/7gEigl7oCzUYwP2QHmrExswB3rcc4iHP/tVfNI7nQSKOKyDQhqBQhqBQtrKQCN2n08Zl0AxwQwKaU6B2p4XT6CYMgQ6HOYXDvHG58UTKKYMgZZPH9Xz0gMSzE87JlBMWRbqd+c63NU5v1JvfV48gWLKdlfn4fef7f9mMIMiF9tdnccf70uBWp8XT6CYMpyDho8xlbulQ7z1efEEiinLMlP5HALkE/XYAAv1kLb2rc4fcbfDs1CPPAzvxUd8UNm6UE+hmFh9iA9z463TT/MyE4Fiwrr1zeLmoOaFegLFhPEiqV6cRplBkYvPbcfWhXoCxYTLDGpeqCdQTLicg9rHJVCMma7i7XuDft4wkvjt4JswrIPeviG+ewJIvX6hnkAxsTrQmI2/20Db6/fZP0+giOLyXnwItE+TZSYkcQu0vyWEhXokYQaFNKdAw3X683m4XIp/OQLFmNfnQZtGH97n30giUMQxBHrzs54J4xIoxiz3xafd7LE4LoFizHZffJx64T0nAkUU233xN5VFsTv88cFCPRJZ7ou/fc9HeBJy2c6eLDMhieEctL75nON23jz8FgJloR5JLIf4mxvYdqeppz/PzKBI5LMOenmGEgv1SOO0UF91l+/zZwMEiiiWQA8vRcqHlpfGJVCMmS6SwmG7unmpZBmXQDFm234xWNzdzjougWLMvlDv8bRjAsUEMyikcQ4KaVzFQ5rXB5aNL0egGCNQSCNQSFu9ccMu4sMi9nEJFGPMoJBmWKjvn6PAQj02YA+0IlD4Wxto+bmBYtIWoQSKKPYZ1GVcAsUYF0mQZgk03LM5v6lN2rgUihHLziLtx5iO+4gnzq0fl0AxIvZ5UALFWMLnQQkU/gyH+O6ToIcXj2UmAsWY2OdBCRRjYstMBIoxAoU0Q6CeOywTKMYs66COOywTKMYs66CpD5JdGpdAMWJfqPcZl0AxYlmoT3qP88a4BIoR08YNGaZQAkUUyyHe8aY5AsUY66CQ5hTozbVSAkUUn0N8NXycefZzzQSKKOYZdOnjoMMn8s6rn/JBoBizH+LL+dWmq6XSlc9JIlCM2QNdmEKZQZGLPdClT9RfdrflHBRpzIEu3zQ3XEnNbhNOoIhiv4pP2qKeQBGHhXpIY6Ee0lYGGvlZOxbqkYkl0KtVpL/HMhNycQmUhXrkwgwKaS6BslCPXHwCZaEemTgFah6XQDGyOtDPPeott3x8fnXq94PvgYV6SPMJlIV6ZOISKMtMyMUlUBbqkQszKKR5nYOyUI8sLIEe98XTR7m4FmpeqKdQjFj2Znp4bw7cibswEiiiWHa327Vnlj6PoSFQjNj2Bw2B3n6QV73wLBACRRT7DFou3TVXFsXu8MfH/CfwCRRRzOeg1dIuoSHesp091y4zEShGjFfxyw/yaufNw2/hT6xdqCdQjDi9kxSu8E9/nplBkchpoX6YN2cXowgUUSxX8REPUai6M4D57ewJFFEMM2iZ/ihZAkUk2yG+Dm9jJj2NhkARxXwOenrjnST4S5hBeS8e/izvJHEOis04XcXbxyVQXFPbH5RAMUKgkLZ644ad77M6CRQjzKCQZrhI+tFdwd/+wLJpXALFNXug3PKBDawNtPzc/ouFevizz6BO4xIornGRBGmWQMMdR7NbhqSOS6C4Zvk8aHsXR+I7ngSKKLb74gOWmbAB233xActM2IDhEN/dEX94YZkJ/iwXSYeX9E+EEiiisMwEaQQKacatb25tYGsfl0Bxzbx5GBvYYgv27RdZZsIGbAv1cRvYmsYlUFyzz6CLG9jaxyVQXDOfgy5uYJswLoHimvEqnoV6bENuHZRCcY1AIc0pUPPz4gkUIwkbNyzcN2d/XjyBYiRpBp1bq0942jGBYiQp0HqmvoTnxRMoRszLTEvL9MygyMWyUN8u0VdLC6H258UTKEbs9yQtvtVpf148geKa3F2dBIprlhm0uyF+7uwydVwCxRXTOWg4xteLb8azUI88Vi/Uf67SLxziWahHJi5vdbLMhFxcAmWhHrlYLpIW14+6P8IMijxWB9qfXlaL2y+yUI9M1gZ6uXg/vCzd8sFCPfJYGeiwCHq+8U5SwrgEiiurl5luXv4sv8pF+neE78Al0G7XkZqFeiRzOcS3gbbX71dBx45LoLjicpEUAu3TZJkJSVyWmUKgfcDrF+opFFdcFuqTZlACxRWntzpDw8/n4XJp3csRKD55bdzQNNqcrc4/7otAEUVvZxEKxRUChTSnQKvmHLS7SFp/FU+g+OQTaLgnuXuYJ4EiieMn6k9vCzvZEyiiuH6ivnz6sARKobjwvSepfCZQJHE6B+2zPO7nPs9EoIjidhXfHeRPbwSKFIrroBSKCwKFNAKFNAKFNM1AKRQ9AoU0AoU00UApFB3VQM8LWzvgG5ENlEkUgXCgFArtQDnMQztQEoV4oBznvzv5QJlEvzf9QEn0W/sVAj2fF3e8xT37NQJtv2Is77cDVb9OoNMXwC8teyhqgeJ7IFBII1BII1BII1BII1BII1BII1BII1BI+7JAgShfFOjGL3+fw/Dj5PriL3/5+xyGHyfXF3/5y9/nMPw4ub74y1/+Pofhx8n1xV/+8vc5DD9Ori/+8pe/z2H4cXJ98Ze//H0Ow4+T64u//OXvcxh+nFxf/OUvf5/D8OPk+mLAG4FCGoFCGoFCGoFCGoFCGoFCGoFCGoFCGoFCGoFCGoFCGoFCmmegdVE8vDu+/vl8eiuKYrfJWOXTh/8wh5eieD67j1M1f2uv3sMcfv85GsI4lmOgdfP91K7VnN6al6/CP6n7WHURAnUepm7GOO7df5wqvHoo1HOY4/4xBHoZwjqWX6CntzC1lc9uA4QJJ8wD1eNP97GO+xCo8zDdy7v/OKe35+7VPYdp5ssQ6GUI81h+gV7qcRuh1/x36T5W9fTPJlDnYQ6/9ROM7ziXQB2HqYtdHV73MoR5LMdA27/u2j/QsvnxncdqXj+cgzoPUz/+d9+eUjuPMxzifYfpAh2GMI/lF2h3wuF7EtqO0/yTOo8Vjk8hUOdhqnBUDPOb919df73iO0wb42UI81i/fKD1cI3kWU4T5xaBPvSzjPM4zSGnOfZ6/2ctH+g2h/i6XWXyHat99Q0O8d0ZWnO25vzjXM4Lv/chfpOLpKpbBfUdq+p3DHx1/pG6f77mn9J3nMtk5jyM+kXSBstMTTqvW41V+i8zHffhp6m9l5m6VtyHqdWXmTZYqA8nUluNVW6wUF8N/xH4jjOcg/oOU6sv1LeHRt9LpP7YGwZxH6t7q9N5mHp459Z3nHKLYfrzzcsQxrH4sAikESikESikESikESikESikESikESikESikESikESikESikESikESikESikESikESikESikESikESikESikESikESikESikESikESikESikEWge7d5Yr/O//drvXYeVCDSPJtCFAonTjEDzIFAnBJpH/fDvlyI8S6nqtjY8/vhXeCRC2T7TLTxA7ul/3fa0/W/v/7Hvn/aGRQSaxzCDhgchhM1hj/uwn2jYUTj8P+G32t8OT38Jz5I77sMz8tyfgHIHCDSPPtDjPmwMWz/+bH9x/PHe7bg9BNpthN3+2d2wFzcWEWgefaDdJtdNeZezzrooPgPtkhx+mzPTCASaxxDo8ECQLr7mhPTxPy/TQJtfEWgsAs1jNIOe+/jaHg//Fygz6AoEmsflHLRvrrskah+2VvztOSiBxiHQPIYLn/bKvOwL7CbPYtdeO02u4gk0DoHmEY7t5bAO2kycl3PQh/ey+63JOiiBxiFQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSCNQSPsLuaFvgCskHXUAAAAASUVORK5CYII=" /><!-- --></p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># mixture probabilities</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;Pi (in %):</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Pi (in %):</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(model<span class="sc">$</span>pi_groups<span class="sc">*</span><span class="dv">100</span>, <span class="dv">2</span>)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;        1     2     3     4     5</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 100.00  0.00  0.00  0.00  0.00</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2  24.97 71.95  0.00  3.08  0.00</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 3   0.00  0.00 94.02  5.98  0.00</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 4  12.48  0.00  5.83 64.57 17.11</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 5   0.00  0.00  9.01 15.35 75.64</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># percentage of outliers</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">&quot;% Outliers per group and variable:</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; % Outliers per group and variable:</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span>N, <span class="cf">function</span>(x) <span class="fu">colMeans</span>(<span class="dv">1</span><span class="sc">-</span>model<span class="sc">$</span>W[groups <span class="sc">==</span> x, ]))<span class="sc">*</span><span class="dv">100</span>, <span class="dv">2</span>)</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;      [,1]  [,2] [,3] [,4] [,5]</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; p    6.45  3.75 2.86 0.00 0.00</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; s    0.00  2.50 0.00 0.00 0.00</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; vv   6.45 12.50 8.57 6.25 9.52</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; t    6.45  3.75 0.00 0.00 4.76</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; rsum 0.00  0.00 2.86 0.00 4.76</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; rel  0.00  2.50 0.00 6.25 4.76</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># calculate residuals</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>res <span class="ot">=</span> <span class="fu">residuals_mggmm</span>(<span class="at">X =</span> data, </span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>                <span class="at">groups =</span> groups,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>                <span class="at">Sigma =</span> model<span class="sc">$</span>Sigma,</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>                <span class="at">mu =</span> model<span class="sc">$</span>mu, </span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>                <span class="at">probs =</span> model<span class="sc">$</span>probs,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>                <span class="at">W =</span> model<span class="sc">$</span>W)</span></code></pre></div>
+</div>
+<div id="references" class="section level2">
+<h2>References</h2>
+<p>GeoSphere Austria (2022): <a href="https://data.hub.geosphere.at" class="uri">https://data.hub.geosphere.at</a>.</p>
+<p>Puchhammer P., Wilms I. and Filzmoser P. (2025): A smooth multi-group
+Gaussian Mixture Model for cellwise robust covariance estimation. <a href="https://doi.org/10.48550/arXiv.2504.02547" class="uri">https://doi.org/10.48550/arXiv.2504.02547</a></p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

@@ -1,368 +1,249 @@
 # METHODS FOR cov_ssMRCD OBJECT
 
-
-##########################################################################################
-#' Summary Method for ssMRCD Object
-#'
-#' Summarises most important information of output \code{\link[ssMRCD]{ssMRCD}}.
-#'
-#' @param object object of class \code{"ssMRCD"}, output of \code{\link[ssMRCD]{ssMRCD}}.
-#' @param ... further parameters.
-#'
-#' @return Prints a summary of the \code{ssMRCD} object.
-#'
-#' @seealso See also \code{\link[ssMRCD]{ssMRCD}}, \code{\link[ssMRCD]{plot.ssMRCD}}.
-#'
-#' @exportS3Method summary ssMRCD
-summary.ssMRCD = function(object, ...){
-
-  # Additional info
-  cat("ss-MRCD with", object$numiter,"many iterations. \nParameter Setting:", "\n")
-  cat("\t * N =", object$N, "\n")
-  cat("\t * n = (")
-  cat(unlist(lapply(X = object$mX,  FUN = function(x) dim(x)[1])), sep = ", ")
-  cat(")\n")
-  cat("\t * \U03BB =", object$lambda, "\n")
-  cat("\t * \U03C1 = (")
-  cat(object$rho, sep = ", ")
-  cat(")\n\n")
-
-  # Covariance
-  cat("Covariance Estimator:\n")
-  names(object$MRCDcov) = paste0("N", 1:object$N)
-  print(object$MRCDcov)
-
-  # Mean
-  cat("Mean Estimator:\n")
-  names(object$MRCDmu) = paste0("N", 1:object$N)
-  print(object$MRCDmu)
-}
-
-
-
 ##########################################################################################
 #' Plot Method for ssMRCD Object
 #'
-#' Plots diagnostics for function output of \code{\link[ssMRCD]{ssMRCD}} regarding convergence behavior
-#' and the resulting covariances matrices.
+#' Produces diagnostic plots for an object of class \code{"ssMRCD"} including convergence behavior and visualizations of the covariance matrices.
 #'
-#' @param x object of class \code{"ssMRCD"}.
-#' @param type type of plot, possible values are \code{"convergence"} and \code{"ellipses"}. See details.
-#' @param centersN for plot type \code{"ellipses"} a matrix specifying the positions of
-#'                 the centers of the covariance estimation centers, see also \code{\link[ssMRCD]{geo_weights}}.
-#' @param colour_scheme coloring scheme used for plot type \code{"ellipses"}, either \code{"trace"} or \code{"regularity"} or \code{"none"}.
-#' @param xlim_upper numeric giving the upper x limit for plot type \code{"convergence"}.
-#' @param manual_rescale for plot type \code{"ellipses"} numeric used to re-scale ellipse sizes.
-#' @param legend logical, if color legend should be included.
-#' @param xlim vector of xlim (see \code{\link{par}}).
-#' @param ylim vector of ylim (see \code{\link{par}}).
-#' @param ... further plotting parameters.
+#' @param x An object of class \code{"ssMRCD"}.
+#' @param type Character string or vector specifying the type of plot(s) to produce. Available options are \code{"convergence"}, \code{"ellipses"}, and \code{"ellipses_geo"}. See Details.
+#' @param variables A character vector of length 2 specifying the variable names (columns of the data) used to compute and plot the covariance ellipses.
+#' @param geo_centers A matrix specifying the spatial/geographical coordinates of the group centers. Required when \code{type = "ellipses_geo"}.
+#' @param manual_rescale Numeric scaling factor to adjust the size of ellipses in \code{"ellipses_geo"} plots.
+#' @param tolerance Numeric value (between 0 and 1) specifying the quantile used to define tolerance ellipses. Default is \code{0.95}.
+#' @param ... Further arguments passed to plotting functions.
 #'
-#' @details For \code{type = "convergence"} a plot is produced displaying the convergence behaviour.
-#' Each line represents a different initial value used for the c-step iteration. On the x-axis the
-#' iteration step is plotted with the corresponding value of the objective function. Not monotonically
-#' lines are plotted in red. \cr
+#' @details
+#' \strong{type = "convergence"}:
+#' Displays the convergence behavior of the objective function across C-step iterations for each initialization. Red lines indicate non-monotonic convergence.
 #'
-#' For \code{type = "ellipses"} and more than a 2-dimensional data setting plotting the exact tolerance ellipse is
-#' not possible anymore. Instead the two eigenvectors with highest eigenvalue from the
-#' MCD used on the full data set without neighborhood assignments are taken and used as axis for
-#' the tolerance ellipses of the ssMRCD covariance estimators. The tolerance ellipse for the global MCD
-#' covariance is plotted in grey in the upper left corner. It is possible to set the colour scheme
-#' to \code{"trace"} to see the overall amount of variabilty and compare the plotted covariance and
-#' the real trace to see how much variance is not plotted. For \code{"regularity"} the regularization of each
-#' covariance is shown.
+#' \strong{type = "ellipses"}:
+#' Shows Mahalanobis tolerance ellipses for each group based on their estimated covariance matrix. Only the two variables specified in \code{variables} are visualized. The global MCD ellipse may be shown for comparison (if included elsewhere).
 #'
-#' @return Returns plots of the ssMRCD methodology and results.
+#' \strong{type = "ellipses_geo"}:
+#' Projects group-wise covariance ellipses onto a geographical coordinate system (e.g., spatial map), using the positions given in \code{geo_centers}. The ellipses are scaled using \code{manual_rescale} and drawn using the same two variables as for \code{type = "ellipses"}.
+#'
+#' @return A named list of ggplot2 plot objects:
+#' \item{plot_convergence}{Plot showing convergence diagnostics (if \code{"convergence"} selected).}
+#' \item{plot_ellipses}{Plot of covariance ellipses in variable space (if \code{"ellipses"} selected).}
+#' \item{plot_geoellipses}{Plot of covariance ellipses in geographical space (if \code{"ellipses_geo"} selected).}
 #'
 #' @examples
-#' # set seed
 #' set.seed(1)
+#' data <- matrix(rnorm(2000), ncol = 4)
+#' colnames(data) <- paste0("V", 1:4)
+#' coords <- matrix(rnorm(1000), ncol = 2)
+#' groups <- sample(1:10, 500, replace = TRUE)
+#' lambda <- 0.3
 #'
-#' # create data set
-#' data = matrix(rnorm(2000), ncol = 4)
-#' coords = matrix(rnorm(1000), ncol = 2)
-#' groups = sample(1:10, 500, replace = TRUE)
-#' lambda = 0.3
+#' outs <- locOuts(data = data,
+#'                               coords = coords,
+#'                               groups = groups,
+#'                               lambda = lambda,
+#'                               k = 10)
 #'
-#' # calculate ssMRCD by using the local outlier detection method
-#' outs = local_outliers_ssMRCD(data = data,
-#'                              coords = coords,
-#'                              groups = groups,
-#'                              lambda = lambda,
-#'                              k = 10)
+#' # Plot convergence
+#' plot(x = outs$ssMRCD, type = "convergence")
 #'
-#' # plot ssMRCD object included in outs
-#' plot(x = outs$ssMRCD,
-#'      centersN = outs$centersN,
-#'      colour_scheme = "trace",
-#'      legend = FALSE)
+#' # Plot ellipses in variable space
+#' plot(x = outs$ssMRCD, type = "ellipses", variables = c("V1", "V2"))
 #'
-#' @seealso \code{\link[ssMRCD]{ssMRCD}, \link[ssMRCD]{summary.ssMRCD},
-#' \link[ssMRCD]{local_outliers_ssMRCD}, \link[ssMRCD]{plot.locOuts}}
+#' # Plot ellipses in geographical space
+#' centers <- matrix(rnorm(20), ncol = 2)  # example centers for 10 groups
+#' plot(x = outs$ssMRCD, type = "ellipses_geo", geo_centers = centers, variables = c("V1", "V2"))
+#'
+#' @seealso \code{\link[ssMRCD]{ssMRCD}},
+#'   \code{\link[ssMRCD]{locOuts}},
+#'   \code{\link[ssMRCD]{plot.locOuts}}
 #'
 #' @exportS3Method plot ssMRCD
-#' @importFrom robustbase covMcd
-#' @importFrom  car ellipse
-#' @importFrom scales alpha
+#' @importFrom ellipse ellipse
+#' @import ggplot2
 plot.ssMRCD = function(x,
-                       type = c("convergence", "ellipses"),
-                       centersN = NULL,
-                       colour_scheme = "none",
-                       xlim_upper = 9,
+                       type = c("convergence", "ellipses", "ellipses_geo"),
+                       variables = NULL,
+                       geo_centers = NULL,
                        manual_rescale = 1,
-                       legend = TRUE,
-                       xlim = NULL,
-                       ylim = NULL,
+                       tolerance = 0.95,
                        ...){
 
 
-  if("convergence" %in% type){
-    color_incr = "darkred"
-    ymax = NA
 
-    p = dim(x$mT)[1]
-    lambda = x$lambda
+  N = length(x$MRCDcov)
+  p = ncol(x$mT)
+
+  g_conv = NULL
+  if("convergence" %in% type){
 
     # prepare data
-    tmp = x$obj_fun_values
-    max_steps = length(tmp[1,])
+    n_starts = nrow(x$obj_fun_values)
+    max_steps = ncol(x$obj_fun_values)
 
-    # get colours
-    decr = which(apply(X = tmp, MARGIN = 1, FUN = monotonic_decreasing))
-    col = rep("grey", length(tmp[,1]))
-    col[!decr] = color_incr
+    decr = which(apply(X = x$obj_fun_values,
+                       MARGIN = 1,
+                       FUN = monotonic_decreasing))
 
-    alpha_val = rep(0.3, length(tmp[,1]))
-    alpha_val[!decr] = 0.6
+    tmp = cbind(values = c(x$obj_fun_values),
+                start = rep(1:n_starts, times = max_steps),
+                step = rep(1:max_steps, each = n_starts))
+    tmp = na.omit(tmp)
 
-    graphics::matplot(t(tmp),
-            type ="l",
-            xlim = c(1, xlim_upper),
-            col = scales::alpha(col, alpha_val), lwd  = 3, lty = 1,
-            xlab = "Iterations",
-            ylab = "Objective function value",
-            main = "Convergence",
-            ...)
-    graphics::legend("topright",
-           col = c("grey", color_incr),
-           c("decreasing", "non-decreasing"),
-           lty = c(1,1),
-           lwd = c(3,3) )
+    # plot
+    g_conv = ggplot2::ggplot() +
+      ggplot2::geom_line(aes(x = tmp[,"step"],
+                    y = tmp[, "values"],
+                    group = tmp[, "start"],
+                    col = tmp[, "start"] %in% decr),
+                alpha = 0.3) +
+      ggplot2::scale_color_manual(name = "",
+                         values = c("FALSE" = "red", "TRUE"= "grey"),
+                         labels = c("FALSE" = "not descreasing", "TRUE" = "decreasing")) +
+      ggplot2::theme_classic() +
+      ggplot2::labs(x = "Iteration Step",
+                    y = "Objective Value",
+                    title = "Convergence (tolerance 1e-08)")
   }
 
+  g_ell = NULL
   if("ellipses" %in% type){
 
-    if(is.null(centersN)) {
-      stop("You need to specify the centers of the neighborhoods (centersN) to plot covariance ellipses.")}
-    if(is.null(dim(centersN))){
-      centersN = cbind(centersN, 1) # one dimensional space
-    }
+    if(is.null(variables)) variables = colnames(x$MRCDcov[[1]])[1:2]
 
-    N = length(x$MRCDcov)
-    p = dim(x$mT)[1]
-    lambda = x$lambda
-
-    # base plot
-    diffx = max(centersN[,1]) - min(centersN[,1])
-    diffy = max(centersN[,2]) - min(centersN[,2])
-    scale_lim = 0.3
-
-    if(is.null(xlim)){
-      xlim = c(min(centersN[,1]) - diffx * scale_lim, max(centersN[,1]) + diffx * scale_lim)
-    }
-    if(is.null(ylim)){
-      ylim = c(min(centersN[,2]) - diffy * scale_lim, max(centersN[,2]) + diffy * scale_lim)
-    }
-
-    plot(min(centersN[,1]), min(centersN[,2]),
-         type = "l",
-         #asp = 1,
-         xlim = xlim,
-         ylim = ylim,
-         main = bquote(Covariances~(lambda == .(lambda) )),
-         xlab = "Coordinate 1",
-         ylab = "Coordinate 2",
-         ...)
-
-    graphics::text(centersN[,1], centersN[,2], 1:N,
-                   cex = 1, col = "black")
-
-    # colorizing
-    legend_labels = rep(NA, N)
-    color_scale = rep(NA, N)
-    if(colour_scheme == "none"){
-      min = 0
-      max = 0
-      color_scale = rep("black", N)
-    }
-    if(colour_scheme == "regularity"){
-      min = min(x$rho)
-      max = max(x$rho)
-      if(min == max) {
-        color_scale = rep("black", N)
-      } else {
-        color_scale = cut(x$rho,
-                          breaks = seq(0, max, length.out = 6),
-                          labels = grDevices::heat.colors(8)[5:1])
-        legend_labels = cut(x$rho,
-                           breaks = seq(0, max, length.out = 6))
-      }
-    }
-    if(colour_scheme == "trace"){
-      tr = rep(NA, N)
-      for(i in 1:N){
-        tr[i] = sum(diag(x$MRCDcov[[i]]))
-      }
-      min = min(tr)
-      max = max(tr)
-      if(min == max) {
-        color_scale = rep("black", N)
-      } else {
-        color_scale = cut(tr,
-                          breaks = round(seq(min-0.01, max + 0.01, length.out = 6), 2),
-                          labels = grDevices::heat.colors(8)[5:1])
-        legend_labels = cut(tr,
-                            breaks = round(seq(min-0.01, max+0.01, length.out = 6), 2))
-      }
-    }
-
-
-    # MCD ellipse
-    MCD = robustbase::covMcd(do.call(rbind,x$mX),
-                             nsamp = "deterministic")$cov
-    S = eigen(MCD)$vectors
-    D = diag(eigen(MCD)$values)
-    Dsqrti = diag(sqrt(diag(D)^(-1)))
-    S = S %*% Dsqrti
-    scale_ell = (max(centersN[,1]) - min(centersN[,1]) + 2*diffx*scale_lim)*0.25/(sqrt(N))
-    ell = car::ellipse(c(min(centersN[,1]), max(centersN[,2])),
-                       shape=diag(1,2),
-                       radius=scale_ell*manual_rescale,
-                       segments=1e3,
-                       draw = FALSE)
-    traceMCD = round(sum(diag(MCD)), 2)
-    graphics::lines(ell[,"x"], ell[,"y"], col = "lightgray", lty= "dashed")
-    graphics::text(min(centersN[,1]), max(centersN[,2]), "glob", col="lightgray", cex = 0.9)
-
-    # neighborhood ellipses
+    ell = matrix(NA, nrow = 0, ncol = 3)
     for(i in 1:N){
-      eigtraf = t(S) %*% x$MRCDcov[[i]] %*% S
-      ell_tmp = car::ellipse(centersN[i,],
-                             shape=eigtraf[1:2, 1:2],
-                             radius=scale_ell*manual_rescale,
-                             segments=1e3,
-                             draw = FALSE)
-      graphics::lines(ell_tmp[, "x"], ell_tmp[, "y"],
-                      col = as.character(color_scale[i]),
-                      lwd = 1.5)
+      elltmp = data.frame(ellipse::ellipse(x$MRCDcov[[i]][variables, variables],
+                             centre = x$MRCDmu[[i]][variables],
+                             level = tolerance))
+      ell = rbind(ell, cbind(elltmp, x$gnames[i]))
     }
 
-    # legend
-    if (legend & colour_scheme == "regularity" & min != max){
-      graphics::legend("topright",
-                       col = c(grDevices::heat.colors(8)[5:1]),
-                       legend = c(levels(legend_labels)),
-                       lwd = 1.5,
-                       cex = 0.8,
-                       title = "Regularity",
-                       lty = c(rep("solid", 5)))
-    }
-    if (legend & colour_scheme == "trace" & min != max){
-      graphics::legend("topright",
-                       col = c(grDevices::heat.colors(8)[5:1], "grey"),
-                       legend = c(levels(legend_labels), paste(traceMCD, "(global)")),
-                       lwd = 1.5,
-                       cex = 0.8,
-                       title = "Trace",
-                       lty = c(rep("solid", 5)))
-    }
+    g_ell = ggplot2::ggplot() +
+      ggplot2::geom_polygon(aes(x = ell[, 1],
+                    y = ell[, 2],
+                    group = ell[, 3],
+                    fill = as.factor(ell[,3]),
+                    col = as.factor(ell[,3])),
+                   alpha = 0.05) +
+      ggplot2::theme_classic() +
+      ggplot2::scale_color_discrete(name = "Groups") +
+      ggplot2::scale_fill_discrete(name = "Groups") +
+      ggplot2::labs(x = variables[1],
+           y = variables[2],
+           title = "Tolerance Ellipses (95%)")
 
   }
+
+  g_ellgeo = NULL
+  if("ellipses_geo" %in% type){
+
+    if(is.null(variables)) variables = colnames(x$MRCDcov[[1]])[1:2]
+
+    if(is.null(geo_centers)) {
+      stop("You need to specify the centers of the neighborhoods geo_centers to plot covariance ellipses in the geographical space.")
+    }
+
+    ellgeo = matrix(NA, nrow = 0, ncol = 3)
+    for(i in 1:N){
+      elltmp = data.frame(ellipse::ellipse(x$MRCDcov[[i]][variables, variables],
+                                centre = geo_centers[i, ],
+                                level = 0.5*manual_rescale))
+      ellgeo = rbind(ellgeo, cbind(elltmp, x$gnames[i]))
+    }
+
+    g_ellgeo = ggplot2::ggplot() +
+      ggplot2::geom_path(aes(x = ellgeo[,1],
+                    y = ellgeo[,2],
+                    group = ellgeo[, 3],
+                    col = as.factor(ellgeo[, 3]))) +
+      ggplot2::theme_classic() +
+      ggplot2::scale_color_discrete(name = "Groups") +
+      ggplot2::labs(x = paste0("x | ",  variables[1]),
+           y = paste0("y | ",  variables[2]),
+           title = paste0("Tolerance Ellipses"))
+  }
+
+  return(list("plot_convergence" = g_conv,
+              "plot_ellipses" = g_ell,
+              "plot_geoellipses" = g_ellgeo))
 }
 
 
 ##########################################################################################
-#' Scale Data Locally
+#' Locally Center and/or Scale or Data Using an ssMRCD Object
 #'
-#' @param ssMRCD \code{ssMRCD} object, see \code{\link[ssMRCD]{ssMRCD}}
-#' @param X matrix, new data to scale with ssMRCD estimation.
-#' @param groups vector, group assignments of new data \code{X}.
-#' @param multivariate logical, \code{TRUE} if multivariate structure should be used.
-#' Otherwise, univariate variances from the ssMRCD estimator is used.
-#' @param center_only logical, if \code{TRUE} observations are only centered.
+#' Applies local standardization (scaling and/or centering) of either the original data
+#' from an \code{ssMRCD} object or new data provided via the \code{X} argument,
+#' using group-wise robust means and variances from the ssMRCD estimation.
 #'
-#' @return Returns matrix of observations. If \code{X = NULL} X from the ssMRCD object is
-#' used and sorted according to group numbering.
+#' @param x An object of class \code{"ssMRCD"}. See \code{\link[ssMRCD]{ssMRCD}}.
+#' @param ... List of additional arguments including:
+#' \describe{
+#'   \item{\code{X}}{A numeric matrix or data frame containing new observations to be scaled. If not provided, the data stored in the \code{ssMRCD} object is used.}
+#'   \item{\code{groups}}{An integer vector from 1 to number of groups of group assignments corresponding
+#'    to the rows of \code{X}. If \code{X} is not provided, defaults to the group
+#'    assignments used in the original ssMRCD estimation.}
+#'   \item{\code{center_only}}{Logical. If \code{TRUE}, only centering is
+#'   applied; if \code{FALSE}, both centering and scaling are applied.
+#'   Default is \code{FALSE}.}
+#' }
+#'
+#' @return A numeric matrix of the same dimension as \code{X}, where each observation has
+#' been standardized (or centered) using the corresponding group-wise robust mean and
+#' (if applicable) variance from the ssMRCD model.
+#' If \code{X = NULL}, the original data from the ssMRCD object is returned in scaled form,
+#' sorted according to group labels.
+#'
+#' @details
+#' For each group, the function applies scaling (or just centering) using the robust
+#' location and scale (square root of the diagonal of the covariance) estimates obtained
+#' during ssMRCD estimation.
+#'
+#' @examples
+#' # Simulated example
+#' x1 <- matrix(runif(200), ncol = 2)
+#' x2 <- matrix(rnorm(200), ncol = 2)
+#' x <- list(x1, x2)
+#'
+#' W <- matrix(c(0, 1, 1, 0), ncol = 2)
+#' localCovs <- ssMRCD(x, weights = W, lambda = 0.5)
+#'
+#' # Scale original data
+#' sc = scale(localCovs)
+#'
+#' # Scale new observations
+#' sc = scale(localCovs,
+#'            list(X = matrix(rnorm(20), ncol = 2, nrow = 10),
+#'            groups = rep(2, 10)))
+#'
+#' # Center only
+#' sc = scale(localCovs,
+#'            list(X = matrix(rnorm(20), ncol = 2, nrow = 10),
+#'            groups = rep(2, 10),
+#'            center_only = TRUE))
 #'
 #' @seealso \code{\link[ssMRCD]{ssMRCD}}
 #'
-#' @export
-#' @importFrom expm sqrtm
-#'
-#' @examples
-#'# create data set
-#' x1 = matrix(runif(200), ncol = 2)
-#' x2 = matrix(rnorm(200), ncol = 2)
-#' x = list(x1, x2)
-#'
-#' # create weighting matrix
-#' W = matrix(c(0, 1, 1, 0), ncol = 2)
-#'
-#' # calculate ssMRCD
-#' localCovs = ssMRCD(x, weights = W, lambda = 0.5)
-#'
-#' # scale used data
-#' scale_ssMRCD(localCovs,
-#'       multivariate = TRUE)
-#'
-#' # scale new data
-#' scale_ssMRCD(localCovs,
-#'       X = matrix(rnorm(20), ncol = 2, nrow = 10),
-#'       groups = rep(2, 10),
-#'       multivariate =TRUE)
+#' @exportS3Method scale ssMRCD
+scale.ssMRCD = function(x, ...){
 
-scale_ssMRCD = function(ssMRCD,
-                        X = NULL,
-                        groups = NULL,
-                        multivariate = FALSE,
-                        center_only = FALSE){
+  args = list(...)
+  N = x$N
 
-  if(is.null(X) | is.null(groups)) {
-    X = do.call(rbind, ssMRCD$mX)
-    groups = rep(1:length(ssMRCD$MRCDcov), times = sapply(X = ssMRCD$mX,
-                                                          FUN = function(x) dim(x)[1]))
+  if(is.null(args$X) | is.null(args$groups)) {
+    args$X = do.call(rbind, x$mX)
+    args$groups = rep(1:N, times = sapply(X = x$mX, nrow))
   }
-  X = as.matrix(X)
-  N = ssMRCD$N
+  if(is.null(args$center_only)) args$center_only = FALSE
 
-  if(!multivariate){
-    for(i in 1:N){
-      ind = which(groups == i)
-      if(length(ind)!= 0){
-        if(!center_only){
-          X[groups == i,] = scale(x = X[groups == i,],
-                                  center = ssMRCD$MRCDmu[[i]],
-                                  scale = sqrt(diag(ssMRCD$MRCDcov[[i]])))
-        } else {
-          X[groups == i,] = scale(x = X[groups == i,],
-                                  center = ssMRCD$MRCDmu[[i]])
-        }
-      }
-    }
-  }
+  X = as.matrix(args$X)
 
-  if(multivariate){
-    for(i in 1:N){
-      ind = which(groups == i)
-      if(length(ind)!= 0){
-        centered = t(X[groups == i,]) - matrix(ssMRCD$MRCDmu[[i]],
-                                               ncol = sum(groups == i),
-                                               nrow = dim(X)[2])
-        if(!center_only){
-          X[groups == i,] = t(expm::sqrtm(ssMRCD$MRCDicov[[i]]) %*% centered)
-        } else{
-          X[groups == i,]  = centered
-        }
+  for(i in 1:N){
+    ind = which(args$groups == i)
+    if(length(ind)!= 0){
+      if(!args$center_only){
+        X[ind,] = scale(x = X[ind,], center = x$MRCDmu[[i]], scale = sqrt(diag(x$MRCDcov[[i]])))
+      } else {
+        X[ind,] = scale(x = X[ind,], center = x$MRCDmu[[i]])
       }
     }
   }
@@ -372,99 +253,155 @@ scale_ssMRCD = function(ssMRCD,
 
 
 ##########################################################################################
-outliers = function(ssMRCD){
-  # get indices of non local outliers in data
-
-  hsets = ssMRCD$hset
-  size_ns = sapply(ssMRCD$mX, function(x) dim(x)[1])
-  N = ssMRCD$N
-
-  ind = c()
-  size_sum = 0
-  for(i in 1:N){
-    ind = c(ind, hsets[[i]] + size_sum)
-    size_sum = size_sum + size_ns[i]
-  }
-
-  return(ind)   # returns index vector for sorted groups!
-}
+# #' Get Indices of Non-Local Outliers
+# #'
+# #' This function extracts indices of non-local outliers from the `ssMRCD` object. The indices are returned as a vector, indicating the positions of the non-local outliers in the sorted groups.
+# #'
+# #' @param ssMRCD An object containing the results of the local outlier detection, which includes:
+# #'   \itemize{
+# #'     \item `hset`: A list of indices for each neighborhood, indicating the positions of local outliers.
+# #'     \item `mX`: A list of matrices, where each matrix represents the data for a neighborhood.
+# #'     \item `N`: The number of neighborhoods.
+# #'   }
+# #'
+# #' @return A numeric vector containing the indices of non-local outliers. The indices are sorted according to the original order of the groups.
+# #'
+# #' @details
+# #' The function aggregates the indices of non-local outliers across all neighborhoods. It constructs the indices based on the structure of the `ssMRCD` object, taking into account the sizes of the neighborhoods.
+#
+# #' @seealso \code{\link[ssMRCD]{ssMRCD}}
+# #' @keywords internal
+#
+# outliers = function(ssMRCD){
+#   hsets = ssMRCD$hset
+#   size_ns = sapply(ssMRCD$mX, function(x) dim(x)[1])
+#   N = ssMRCD$N
+#
+#   ind = c()
+#   size_sum = 0
+#   for(i in 1:N){
+#     ind = c(ind, hsets[[i]] + size_sum)
+#     size_sum = size_sum + size_ns[i]
+#   }
+#
+#   return(ind)
+# }
 
 ##########################################################################################
-#' Extracting Residuals from Local Fit
+#' Residual Method from an ssMRCD Object
 #'
-#' @param object \code{ssMRCD} object, see \code{\link[ssMRCD]{ssMRCD}}.
-#' @param ... see details
+#' Computes group-wise Mahalanobis residuals (standardized distances) using the robust local covariance and location estimates from an \code{ssMRCD} object. Residuals can be computed for the fitted data or for new data, and optionally summarized as a trimmed mean.
 #'
-#' @return Returns either all residuals or the mean of the residual norms lower than the \code{alpha}- Quantile.
+#' @param object An object of class \code{"ssMRCD"}, typically the result of \code{\link[ssMRCD]{ssMRCD}}.
+#' @param ... Additional arguments, see Details.
 #'
-#' @details Other input variables are: \tabular{ll}{
-#'    \code{remove_outliers} \tab logical (default \code{FALSE}). If TRUE, only residuals
-#'    from not outlying observations are calculated. If FALSE, trimmed residuals are used (see \code{alpha}). \cr
-#'    \tab \cr
-#'    \code{X} \tab matrix of new data, if data from the \code{ssMRCD} object is used. \cr
-#'    \tab \cr
-#'    \code{groups} \tab vector of groups for new data, if \code{NULL} data from the \code{ssMRCD} object is used. \cr
-#'    \tab \cr
-#'    \code{mean} \tab logical (default \code{FALSE}), specifying if mean of trimmed
-#'    observations is returned or all residuals. \cr
+#' @details
+#' The function supports several modes of use, controlled by the \code{type} argument in \code{...}:
+#' \describe{
+#'   \item{\code{type}}{\code{"residuals"} (default), \code{"trimmed_mean"}, or \code{"additional_data"}.}
+#'   \item{\code{X}}{A numeric matrix of new observations to compute residuals for. Required if \code{type = "additional_data"}.}
+#'   \item{\code{groups}}{A vector of group assignments for the new data in \code{X}. Required if \code{type = "additional_data"}.}
+#'   \item{\code{alpha}}{A numeric value (default taken from the \code{ssMRCD} object if missing) indicating the quantile for trimmed mean calculation. Only used if \code{type = "trimmed_mean"}.}
 #' }
 #'
-#
-#' If \code{X} and \code{groups} are provided, \code{alpha} is set to one and all residuals are used.
-#' If \code{remove_outliers} is TRUE, \code{alpha} is set to 1 automatically.
+#' Notes:
+#' \itemize{
+#'   \item If \code{type = "residuals"}, residuals are computed for the original data stored
+#'    in the \code{ssMRCD} object.
+#'   \item If \code{type = "additional_data"}, both \code{X} and \code{groups} must be
+#'   provided. All residuals of \code{X} are returned (i.e., \code{alpha = 1} is used internally).
+#'   \item If \code{type = "trimmed_mean"}, the mean of the \code{alpha} proportion of
+#'   smallest residual norms is returned. This is also used for parameter tuning.
+#' }
 #'
-#'
-#' @exportS3Method residuals ssMRCD
+#' @return
+#' Depending on the \code{type}:
+#' \describe{
+#'   \item{\code{"residuals"} or \code{"additional_data"}}{A numeric matrix of residuals.}
+#'   \item{\code{"trimmed_mean"}}{A single numeric value: the trimmed mean of residual norms.}
+#' }
 #'
 #' @examples
-#'# create data set
-#' x1 = matrix(runif(200), ncol = 2)
-#' x2 = matrix(rnorm(200), ncol = 2)
-#' x = list(x1, x2)
+#' # Create data
+#' x1 <- matrix(runif(200), ncol = 2)
+#' x2 <- matrix(rnorm(200), ncol = 2)
+#' x <- list(x1, x2)
 #'
-#' # create weighting matrix
-#' W = matrix(c(0, 1, 1, 0), ncol = 2)
+#' # Define neighborhood weights
+#' W <- matrix(c(0, 1, 1, 0), ncol = 2)
 #'
-#' # calculate ssMRCD
-#' localCovs = ssMRCD(x, weights = W, lambda = 0.5)
+#' # Compute ssMRCD
+#' localCovs <- ssMRCD(x, weights = W, lambda = 0.5)
 #'
-#' # residuals of model
-#' residuals(localCovs, remove_outliers = TRUE, mean = FALSE)
+#' # Residuals for original data (all)
+#' residuals(localCovs, type = "residuals")
 #'
-#' # residuals of new data
-#' residuals(localCovs,
-#'       X = matrix(rnorm(20), ncol = 2, nrow = 10),
-#'       groups = rep(2, 10),
-#'       mean =TRUE)
+#' # Trimmed mean of residual norms
+#' residuals(localCovs, type = "trimmed_mean", alpha = 0.8)
 #'
+#' # Residuals for new data
+#' newX <- matrix(rnorm(20), ncol = 2, nrow = 10)
+#' newGroups <- rep(2, 10)
+#' residuals(localCovs, type = "additional_data", X = newX, groups = newGroups)
+#'
+#' @seealso \code{\link[ssMRCD]{ssMRCD}}
+#'
+#' @exportS3Method residuals ssMRCD
+#' @importFrom expm sqrtm
 residuals.ssMRCD = function(object, ...){
 
   args = list(...)
-  if(is.null(args$remove_outliers)) args$remove_outliers = FALSE
-  if(is.null(args$mean)) args$mean = FALSE
+
+  # type: "trimmed_mean", "residuals", "additional_data"
+  if(is.null(args$type)) args$type = "residuals"
+  if(args$type == "additional_data" & (is.null(args$X) | is.null(args$groups))) {
+    stop("Type is 'additional data' but no additional data X or additional groups assignemnts in groups are provided.")
+  }
+
+  if(args$type == "trimmed_mean" & is.null(args$alpha)) args$alpha = object$alpha
+  if(args$type == "residuals" | args$type == "additional_data")  args$alpha = 1
 
   N = length(object$MRCDcov)
-  if(is.null(args$X) | is.null(args$groups)){
-    args$X = do.call(rbind, object$mX)
-    args$groups = rep(1:N, times = sapply(X = object$mX, FUN = function(x) dim(x)[1]))
-  }
-  n = dim(args$X)[1]
+  p = ncol(object$MRCDcov[[1]])
+  n = sum(sapply(object$mX, nrow))
 
   ind = 1:n
-  if(args$remove_outliers) ind = outliers(ssMRCD = object)  # only sensible for X, groups not new data
-  if(!args$remove_outliers)  alpha = object$alpha
-  if(args$remove_outliers)  alpha = 1
 
   # calculate residuals
-  residuals = scale_ssMRCD(object, X = NULL, groups = NULL, multivariate = TRUE)
-  if(!args$mean) return(residuals)
+  if(args$type != "additional_data"){
+    residuals_model = matrix(NA, nrow = n, ncol = p)
+    groups = rep(1:N, times = sapply(object$mX, nrow))
+    for(i in 1:N){
+      ind = which(groups == i)
+      if(length(ind)!= 0){
+        centered = sweep(object$mX[[i]], 2, object$MRCDmu[[i]], "-")
+        residuals_model[ind,] = t(apply(centered, 1, function(x) expm::sqrtm(object$MRCDicov[[i]]) %*% x))
+      }
+    }
+  }
 
-  # calculate mean of norm
-  res_norm = sqrt(diag(residuals[ind, ] %*% t(residuals[ind, ])))
-  ind = sort.int(res_norm, index.return = T)$ix[1:round(n*alpha)]
-  res_trimmed = res_norm[ind]
+  if(args$type == "additional_data"){
+    residuals_model = matrix(NA, nrow = nrow(args$X), ncol = p)
+    for(i in 1:N){
+      ind = which(args$groups == i)
+      if(length(ind)!= 0){
+        centered = sweep(args$X[ind, ,drop = FALSE], 2, object$MRCDmu[[i]], "-")
+        residuals_model[ind, ] = t(apply(centered, 1, function(x) expm::sqrtm(object$MRCDicov[[i]]) %*% x))
+      }
+    }
+  }
 
-  return(mean(res_trimmed))
+  if(args$type %in% c("residuals", "additional_data")) return(residuals_model)
+
+  # calculate trimmed mean of norm
+  if(args$type == "trimmed_mean"){
+    res_norm = sqrt(diag(residuals_model %*% t(residuals_model)))
+    ind = sort.int(res_norm, index.return = T)$ix[1:round(n*args$alpha)]
+    res_trimmed = res_norm[ind]
+
+    return(mean(res_trimmed))
+  }
+
 }
 
 

@@ -6,86 +6,75 @@
 \usage{
 \method{plot}{ssMRCD}(
   x,
-  type = c("convergence", "ellipses"),
-  centersN = NULL,
-  colour_scheme = "none",
-  xlim_upper = 9,
+  type = c("convergence", "ellipses", "ellipses_geo"),
+  variables = NULL,
+  geo_centers = NULL,
   manual_rescale = 1,
-  legend = TRUE,
-  xlim = NULL,
-  ylim = NULL,
+  tolerance = 0.95,
   ...
 )
 }
 \arguments{
-\item{x}{object of class \code{"ssMRCD"}.}
+\item{x}{An object of class \code{"ssMRCD"}.}
 
-\item{type}{type of plot, possible values are \code{"convergence"} and \code{"ellipses"}. See details.}
+\item{type}{Character string or vector specifying the type of plot(s) to produce. Available options are \code{"convergence"}, \code{"ellipses"}, and \code{"ellipses_geo"}. See Details.}
 
-\item{centersN}{for plot type \code{"ellipses"} a matrix specifying the positions of
-the centers of the covariance estimation centers, see also \code{\link[ssMRCD]{geo_weights}}.}
+\item{variables}{A character vector of length 2 specifying the variable names (columns of the data) used to compute and plot the covariance ellipses.}
 
-\item{colour_scheme}{coloring scheme used for plot type \code{"ellipses"}, either \code{"trace"} or \code{"regularity"} or \code{"none"}.}
+\item{geo_centers}{A matrix specifying the spatial/geographical coordinates of the group centers. Required when \code{type = "ellipses_geo"}.}
 
-\item{xlim_upper}{numeric giving the upper x limit for plot type \code{"convergence"}.}
+\item{manual_rescale}{Numeric scaling factor to adjust the size of ellipses in \code{"ellipses_geo"} plots.}
 
-\item{manual_rescale}{for plot type \code{"ellipses"} numeric used to re-scale ellipse sizes.}
+\item{tolerance}{Numeric value (between 0 and 1) specifying the quantile used to define tolerance ellipses. Default is \code{0.95}.}
 
-\item{legend}{logical, if color legend should be included.}
-
-\item{xlim}{vector of xlim (see \code{\link{par}}).}
-
-\item{ylim}{vector of ylim (see \code{\link{par}}).}
-
-\item{...}{further plotting parameters.}
+\item{...}{Further arguments passed to plotting functions.}
 }
 \value{
-Returns plots of the ssMRCD methodology and results.
+A named list of ggplot2 plot objects:
+\item{plot_convergence}{Plot showing convergence diagnostics (if \code{"convergence"} selected).}
+\item{plot_ellipses}{Plot of covariance ellipses in variable space (if \code{"ellipses"} selected).}
+\item{plot_geoellipses}{Plot of covariance ellipses in geographical space (if \code{"ellipses_geo"} selected).}
 }
 \description{
-Plots diagnostics for function output of \code{\link[ssMRCD]{ssMRCD}} regarding convergence behavior
-and the resulting covariances matrices.
+Produces diagnostic plots for an object of class \code{"ssMRCD"} including convergence behavior and visualizations of the covariance matrices.
 }
 \details{
-For \code{type = "convergence"} a plot is produced displaying the convergence behaviour.
-Each line represents a different initial value used for the c-step iteration. On the x-axis the
-iteration step is plotted with the corresponding value of the objective function. Not monotonically
-lines are plotted in red. \cr
+\strong{type = "convergence"}:
+Displays the convergence behavior of the objective function across C-step iterations for each initialization. Red lines indicate non-monotonic convergence.
 
-For \code{type = "ellipses"} and more than a 2-dimensional data setting plotting the exact tolerance ellipse is
-not possible anymore. Instead the two eigenvectors with highest eigenvalue from the
-MCD used on the full data set without neighborhood assignments are taken and used as axis for
-the tolerance ellipses of the ssMRCD covariance estimators. The tolerance ellipse for the global MCD
-covariance is plotted in grey in the upper left corner. It is possible to set the colour scheme
-to \code{"trace"} to see the overall amount of variabilty and compare the plotted covariance and
-the real trace to see how much variance is not plotted. For \code{"regularity"} the regularization of each
-covariance is shown.
+\strong{type = "ellipses"}:
+Shows Mahalanobis tolerance ellipses for each group based on their estimated covariance matrix. Only the two variables specified in \code{variables} are visualized. The global MCD ellipse may be shown for comparison (if included elsewhere).
+
+\strong{type = "ellipses_geo"}:
+Projects group-wise covariance ellipses onto a geographical coordinate system (e.g., spatial map), using the positions given in \code{geo_centers}. The ellipses are scaled using \code{manual_rescale} and drawn using the same two variables as for \code{type = "ellipses"}.
 }
 \examples{
-# set seed
 set.seed(1)
+data <- matrix(rnorm(2000), ncol = 4)
+colnames(data) <- paste0("V", 1:4)
+coords <- matrix(rnorm(1000), ncol = 2)
+groups <- sample(1:10, 500, replace = TRUE)
+lambda <- 0.3
 
-# create data set
-data = matrix(rnorm(2000), ncol = 4)
-coords = matrix(rnorm(1000), ncol = 2)
-groups = sample(1:10, 500, replace = TRUE)
-lambda = 0.3
+outs <- locOuts(data = data,
+                              coords = coords,
+                              groups = groups,
+                              lambda = lambda,
+                              k = 10)
 
-# calculate ssMRCD by using the local outlier detection method
-outs = local_outliers_ssMRCD(data = data,
-                             coords = coords,
-                             groups = groups,
-                             lambda = lambda,
-                             k = 10)
+# Plot convergence
+plot(x = outs$ssMRCD, type = "convergence")
 
-# plot ssMRCD object included in outs
-plot(x = outs$ssMRCD,
-     centersN = outs$centersN,
-     colour_scheme = "trace",
-     legend = FALSE)
+# Plot ellipses in variable space
+plot(x = outs$ssMRCD, type = "ellipses", variables = c("V1", "V2"))
+
+# Plot ellipses in geographical space
+centers <- matrix(rnorm(20), ncol = 2)  # example centers for 10 groups
+plot(x = outs$ssMRCD, type = "ellipses_geo", geo_centers = centers, variables = c("V1", "V2"))
 
 }
 \seealso{
-\code{\link[ssMRCD]{ssMRCD}, \link[ssMRCD]{summary.ssMRCD},
-\link[ssMRCD]{local_outliers_ssMRCD}, \link[ssMRCD]{plot.locOuts}}
+\code{\link[ssMRCD]{ssMRCD}},
+  \code{\link[ssMRCD]{locOuts}},
+  \code{\link[ssMRCD]{plot.locOuts}}
 }

@@ -2,56 +2,68 @@
 % Please edit documentation in R/ssMRCD_methods.R
 \name{residuals.ssMRCD}
 \alias{residuals.ssMRCD}
-\title{Extracting Residuals from Local Fit}
+\title{Residual Method from an ssMRCD Object}
 \usage{
 \method{residuals}{ssMRCD}(object, ...)
 }
 \arguments{
-\item{object}{\code{ssMRCD} object, see \code{\link[ssMRCD]{ssMRCD}}.}
+\item{object}{An object of class \code{"ssMRCD"}, typically the result of \code{\link[ssMRCD]{ssMRCD}}.}
 
-\item{...}{see details}
+\item{...}{Additional arguments, see Details.}
 }
 \value{
-Returns either all residuals or the mean of the residual norms lower than the \code{alpha}- Quantile.
+Depending on the \code{type}:
+\describe{
+  \item{\code{"residuals"} or \code{"additional_data"}}{A numeric matrix of residuals.}
+  \item{\code{"trimmed_mean"}}{A single numeric value: the trimmed mean of residual norms.}
+}
 }
 \description{
-Extracting Residuals from Local Fit
+Computes group-wise Mahalanobis residuals (standardized distances) using the robust local covariance and location estimates from an \code{ssMRCD} object. Residuals can be computed for the fitted data or for new data, and optionally summarized as a trimmed mean.
 }
 \details{
-Other input variables are: \tabular{ll}{
-   \code{remove_outliers} \tab logical (default \code{FALSE}). If TRUE, only residuals
-   from not outlying observations are calculated. If FALSE, trimmed residuals are used (see \code{alpha}). \cr
-   \tab \cr
-   \code{X} \tab matrix of new data, if data from the \code{ssMRCD} object is used. \cr
-   \tab \cr
-   \code{groups} \tab vector of groups for new data, if \code{NULL} data from the \code{ssMRCD} object is used. \cr
-   \tab \cr
-   \code{mean} \tab logical (default \code{FALSE}), specifying if mean of trimmed
-   observations is returned or all residuals. \cr
+The function supports several modes of use, controlled by the \code{type} argument in \code{...}:
+\describe{
+  \item{\code{type}}{\code{"residuals"} (default), \code{"trimmed_mean"}, or \code{"additional_data"}.}
+  \item{\code{X}}{A numeric matrix of new observations to compute residuals for. Required if \code{type = "additional_data"}.}
+  \item{\code{groups}}{A vector of group assignments for the new data in \code{X}. Required if \code{type = "additional_data"}.}
+  \item{\code{alpha}}{A numeric value (default taken from the \code{ssMRCD} object if missing) indicating the quantile for trimmed mean calculation. Only used if \code{type = "trimmed_mean"}.}
 }
 
-If \code{X} and \code{groups} are provided, \code{alpha} is set to one and all residuals are used.
-If \code{remove_outliers} is TRUE, \code{alpha} is set to 1 automatically.
+Notes:
+\itemize{
+  \item If \code{type = "residuals"}, residuals are computed for the original data stored
+   in the \code{ssMRCD} object.
+  \item If \code{type = "additional_data"}, both \code{X} and \code{groups} must be
+  provided. All residuals of \code{X} are returned (i.e., \code{alpha = 1} is used internally).
+  \item If \code{type = "trimmed_mean"}, the mean of the \code{alpha} proportion of
+  smallest residual norms is returned. This is also used for parameter tuning.
+}
 }
 \examples{
-# create data set
-x1 = matrix(runif(200), ncol = 2)
-x2 = matrix(rnorm(200), ncol = 2)
-x = list(x1, x2)
+# Create data
+x1 <- matrix(runif(200), ncol = 2)
+x2 <- matrix(rnorm(200), ncol = 2)
+x <- list(x1, x2)
 
-# create weighting matrix
-W = matrix(c(0, 1, 1, 0), ncol = 2)
+# Define neighborhood weights
+W <- matrix(c(0, 1, 1, 0), ncol = 2)
 
-# calculate ssMRCD
-localCovs = ssMRCD(x, weights = W, lambda = 0.5)
+# Compute ssMRCD
+localCovs <- ssMRCD(x, weights = W, lambda = 0.5)
 
-# residuals of model
-residuals(localCovs, remove_outliers = TRUE, mean = FALSE)
+# Residuals for original data (all)
+residuals(localCovs, type = "residuals")
 
-# residuals of new data
-residuals(localCovs,
-      X = matrix(rnorm(20), ncol = 2, nrow = 10),
-      groups = rep(2, 10),
-      mean =TRUE)
+# Trimmed mean of residual norms
+residuals(localCovs, type = "trimmed_mean", alpha = 0.8)
 
+# Residuals for new data
+newX <- matrix(rnorm(20), ncol = 2, nrow = 10)
+newGroups <- rep(2, 10)
+residuals(localCovs, type = "additional_data", X = newX, groups = newGroups)
+
+}
+\seealso{
+\code{\link[ssMRCD]{ssMRCD}}
 }

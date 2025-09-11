@@ -1,0 +1,103 @@
+---
+title: "Cellwise Robust Multi-Group Gaussian Mixture Model"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Cellwise Robust Multi-Group Gaussian Mixture Model}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  warning = FALSE, 
+  fig.dim = c(7, 4.5),
+  comment = "#>"
+)
+```
+
+
+This vignette reproduces the weather example described in Puchhammer, Wilms and Filzmoser (2025). The original data is from Geosphere Austria (2022) and included in this package.
+
+```{r setup}
+library(ssMRCD)
+library(ggplot2)
+library(dplyr)
+```
+
+## Data Preparation
+
+The original data from GeoSphere Austria (2022) is pre-cleaned and saved in the data frame object `weatherAUT2021`. Additional information can be found on the helping page.
+
+```{r metadata, eval = FALSE}
+# get meta data for the data set
+? weatherAUT2021
+```
+
+```{r load data, eval = TRUE}
+# load the data
+data("weatherAUT2021")
+
+# inspect the data
+head(weatherAUT2021)
+
+# select variables, station names and number of observations
+data = weatherAUT2021 %>% select(p:rel)
+stations = weatherAUT2021$name
+n = dim(data)[1]
+```
+
+The predefined groups are based in the underlying geographical landscape consisting of Alpine mountains, hills and flatter areas in Austria. 
+
+```{r build groups}
+# build 5 groups of observations based on spatial proximity and geography
+cut_lon = c(min(weatherAUT2021$lon)-0.2, 12, 16, max(weatherAUT2021$lon) + 0.2)
+cut_lat = c(min(weatherAUT2021$lat)-0.2, 48, max(weatherAUT2021$lat) + 0.2)
+groups = ssMRCD::groups_gridbased(weatherAUT2021$lon, 
+                                  weatherAUT2021$lat, 
+                                  cut_lon, 
+                                  cut_lat)
+N = length(unique(groups))
+table(groups)
+```
+
+
+```{r run model}
+# calculate MG-GMM
+model = cellMGGMM(X = data, groups = groups,
+                  nsteps = 100, alpha = 0.5,
+                  maxcond = 100)
+```
+
+
+```{r mixture probabilities}
+# mixture probabilities
+cat("Pi (in %):\n")
+round(model$pi_groups*100, 2)
+```
+
+
+```{r percentage of outlier}
+# percentage of outliers
+cat("% Outliers per group and variable:\n")
+round(sapply(1:N, function(x) colMeans(1-model$W[groups == x, ]))*100, 2)
+```
+
+
+```{r residuals}
+# calculate residuals
+res = residuals_mggmm(X = data, 
+                groups = groups,
+                Sigma = model$Sigma,
+                mu = model$mu, 
+                probs = model$probs,
+                W = model$W)
+```
+
+
+## References
+
+GeoSphere Austria (2022): <https://data.hub.geosphere.at>.
+
+Puchhammer P., Wilms I. and Filzmoser P. (2025): A smooth multi-group Gaussian Mixture Model for cellwise robust covariance estimation. <https://doi.org/10.48550/arXiv.2504.02547>
+
