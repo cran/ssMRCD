@@ -159,13 +159,15 @@ align = function(PC, type = "largest", vec = NULL){
 #' pca = msPCA(eta = 1, gamma = 0.5,COVS = loccovs$MRCDcov)
 #'
 #' # calculate scores
-#' scores(PC = pca$PC, ssMRCD = loccovs)
+#' scores_all = scores(PC = pca$PC, ssMRCD = loccovs)
+#' str(scores_all)
 #'
-#' scores(PC = pca$PC,
-#'        X = rbind(x1, x2),
-#'        groups = rep(c(1,2), each = 100),
-#'        mu = loccovs$MRCDmu,
-#'        Sigma = loccovs$MRCDcov)
+#' scores_all = scores(PC = pca$PC,
+#'                     X = rbind(x1, x2),
+#'                     groups = rep(c(1,2), each = 100),
+#'                     mu = loccovs$MRCDmu,
+#'                     Sigma = loccovs$MRCDcov)
+#' str(scores_all)
 
 
 scores = function( PC, ssMRCD = NULL, X = NULL, groups = NULL, mu = NULL, Sigma = NULL){

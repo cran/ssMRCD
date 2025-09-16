@@ -753,6 +753,10 @@ solve_ADMM = function(eta,
          pos = 4)
   }
 
+  # show progress only when interactive
+  if(!interactive()) show_progress = FALSE
+
+
 
   # initialize vectors
   U1 = rep(0, N*p)

@@ -376,7 +376,7 @@ arma::mat pis(const arma::mat& probs,
               double alpha = 0.5) {
 
   int N = probs.n_cols;
-  arma::mat pi_groups(N, N, arma::fill::none); // Initialize with NaN values
+  arma::mat pi_groups(N, N, arma::fill::zeros); // Initialize with NaN values
 
   for (int g = 0; g < N; g++) {
     arma::uvec indices = find(groups == (g + 1));
@@ -389,25 +389,23 @@ arma::mat pis(const arma::mat& probs,
       pi_groups(g, g) = std::max(alpha, Nk / indices.n_elem);
     }
 
-    for (int g = 0; g < N; g++) {
-      for (int l = 0; l < N; l++) {
-        if(!(l==g)){
-          arma::uvec indices = find(groups == (g + 1));
+    for (int l = 0; l < N; l++) {
+      if(!(l==g)){
+        arma::uvec indices = find(groups == (g + 1));
 
-          if (!indices.empty()) {
-            arma::mat probs_r = probs.rows(indices);  // Extract the i-th row from X
-            arma::colvec probs_rc = probs_r.col(g);  // Extract the observed columns of Xi
-            double Ng = sum(probs_rc);
+        if (!indices.empty()) {
+          arma::mat probs_r = probs.rows(indices);  // Extract the i-th row from X
+          arma::colvec probs_rc = probs_r.col(g);  // Extract the observed columns of Xi
+          double Ng = sum(probs_rc);
 
-            arma::mat probs_rl = probs.rows(indices);  // Extract the i-th row from X
-            arma::colvec probs_rcl = probs_rl.col(l);  // Extract the observed columns of Xi
-            double Nl = sum(probs_rcl);
+          arma::mat probs_rl = probs.rows(indices);  // Extract the i-th row from X
+          arma::colvec probs_rcl = probs_rl.col(l);  // Extract the observed columns of Xi
+          double Nl = sum(probs_rcl);
 
-            if (1 - pi_groups(g, g) != 0) {
-              pi_groups(g, l) = (1 - pi_groups(g, g)) * (Nl / indices.n_elem) / (1 - Ng / indices.n_elem);
-            } else {
-              pi_groups(g, l) = 0.0;
-            }
+          if (1 - pi_groups(g, g) != 0) {
+            pi_groups(g, l) = (1 - pi_groups(g, g)) * (Nl / indices.n_elem) / (1 - Ng / indices.n_elem);
+          } else {
+            pi_groups(g, l) = 0.0;
           }
         }
       }

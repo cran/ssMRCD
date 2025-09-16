@@ -29,6 +29,7 @@
 #'   \item{4}{Maximum number of iterations for the root finder (default: 50).}
 #' }
 #' @param n_max Integer. Maximum number of ADMM iterations (default: 200).
+#' @param show_progress Logical. Indicates whether progress bars should be displayed.
 #'
 #' @return An object of class \code{"msPCA"} containing the following elements:\tabular{ll}{
 #'    \code{PC} \tab Array of dimension p x k x N of loading vectors.  \cr
@@ -71,11 +72,11 @@
 #' C3 = t(C3) %*% C3
 #'
 #' pca1 = msPCA(eta = 1, gamma = 0.5, COVS = list(C1, C2, C3), k = 3,
-#'              n_max = 100, rho = list(NA, TRUE, 100, 1))
+#'              n_max = 100, rho = list(NA, TRUE, 100, 1), show_progress = FALSE)
 #' summary(pca1)
 #'
 #' pca2 = msPCA(eta = seq(0, 3, 0.25), gamma = 1, COVS = list(C1, C2, C3), k = 3,
-#'              n_max = 100, rho = list(NA, TRUE, 100, 1))
+#'              n_max = 100, rho = list(NA, TRUE, 100, 1), show_progress = FALSE)
 #' summary(pca2)
 
 msPCA = function(eta,
@@ -86,7 +87,8 @@ msPCA = function(eta,
                  convergence_plot = FALSE,
                  n_max = 200,
                  rho = list(NA, TRUE, 100, 1),
-                 eps = c(1e-5, 1e-4, 1e-1, 50)){
+                 eps = c(1e-5, 1e-4, 1e-1, 50),
+                 show_progress = FALSE){
 
 
   # input checks
@@ -197,7 +199,8 @@ msPCA = function(eta,
                      eps_root = eps[3],
                      maxiter_root = eps[4],
                      rho = rho_init,
-                     increase_rho = increase_rho)
+                     increase_rho = increase_rho,
+                     show_progress = show_progress)
 
   # add tuning info
   if(tuning) out = c(out, tuning_add)

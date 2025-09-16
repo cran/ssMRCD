@@ -334,7 +334,7 @@ scale.ssMRCD = function(x, ...){
 #' localCovs <- ssMRCD(x, weights = W, lambda = 0.5)
 #'
 #' # Residuals for original data (all)
-#' residuals(localCovs, type = "residuals")
+#' head(residuals(localCovs, type = "residuals"))
 #'
 #' # Trimmed mean of residual norms
 #' residuals(localCovs, type = "trimmed_mean", alpha = 0.8)

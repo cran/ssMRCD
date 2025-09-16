@@ -224,7 +224,7 @@ plot.locOuts = function(x,
       ggplot2::geom_vline(xintercept = x$cutoff,
                  color = "black",
                  linetype = "dashed",
-                 size = 1) +
+                 linewidth = 1) +
       ggplot2::annotate("label",
                x = x$cutoff,
                y = max(graphics::hist(x$next_distance, plot = FALSE, breaks = bins)$counts),

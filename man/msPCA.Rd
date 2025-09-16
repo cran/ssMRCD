@@ -13,7 +13,8 @@ msPCA(
   convergence_plot = FALSE,
   n_max = 200,
   rho = list(NA, TRUE, 100, 1),
-  eps = c(1e-05, 1e-04, 0.1, 50)
+  eps = c(1e-05, 1e-04, 0.1, 50),
+  show_progress = FALSE
 )
 }
 \arguments{
@@ -48,6 +49,8 @@ If a single value is provided, the optimal \code{eta} is selected automatically.
   \item{3}{Tolerance for convergence of the internal root-finding step (default: \code{1e-1}).}
   \item{4}{Maximum number of iterations for the root finder (default: 50).}
 }}
+
+\item{show_progress}{Logical. Indicates whether progress bars should be displayed.}
 }
 \value{
 An object of class \code{"msPCA"} containing the following elements:\tabular{ll}{
@@ -86,11 +89,11 @@ C3 = matrix(runif(25, -1, 1), 5, 5)
 C3 = t(C3) \%*\% C3
 
 pca1 = msPCA(eta = 1, gamma = 0.5, COVS = list(C1, C2, C3), k = 3,
-             n_max = 100, rho = list(NA, TRUE, 100, 1))
+             n_max = 100, rho = list(NA, TRUE, 100, 1), show_progress = FALSE)
 summary(pca1)
 
 pca2 = msPCA(eta = seq(0, 3, 0.25), gamma = 1, COVS = list(C1, C2, C3), k = 3,
-             n_max = 100, rho = list(NA, TRUE, 100, 1))
+             n_max = 100, rho = list(NA, TRUE, 100, 1), show_progress = FALSE)
 summary(pca2)
 }
 \references{

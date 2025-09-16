@@ -108,7 +108,8 @@
 #' W = matrix(c(0, 1, 1, 0), ncol = 2)
 #'
 #' # calculate ssMRCD
-#' ssMRCD(X = x, weights = W, lambda = 0.5)
+#' out = ssMRCD(X = x, weights = W, lambda = 0.5)
+#' str(out)
 
 
 ssMRCD = function(X,

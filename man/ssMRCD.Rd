@@ -120,7 +120,8 @@ x = list(x1, x2)
 W = matrix(c(0, 1, 1, 0), ncol = 2)
 
 # calculate ssMRCD
-ssMRCD(X = x, weights = W, lambda = 0.5)
+out = ssMRCD(X = x, weights = W, lambda = 0.5)
+str(out)
 }
 \references{
 Puchhammer P. and Filzmoser P. (2023). Spatially Smoothed Robust Covariance Estimation for Local Outlier Detection. \emph{Journal of Computational and Graphical Statistics, 33(3), 928–940}.  \doi{10.1080/10618600.2023.2277875}
